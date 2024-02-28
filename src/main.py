@@ -40,6 +40,8 @@ class R2Controller(MainController):
         self.button_b_state = TwoStateButtonHandler()
     
     def main(self):
+        self.log_system.write(f"Start R2Controller main")
+        print(f"Start R2Controller main")
         try:
             while True:
                 raw_ctr_data: Dict = json.loads(self.read_udp()) # read from controller

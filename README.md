@@ -80,11 +80,39 @@ WantedBy=multi-user.target
 ```
 以前のログファイルの削除と, 仮想環境の起動, `main.py`の起動を行う
 
-常時起動を有効する
+~~常時起動を有効する~~ (CANの設定の関係でこれでは動かなかった)
 ```
 sudo systemctl daemon-reload
 sudo systemctl enable nhk2024.service
 sudo systemctl start nhk2024.service
+```
+
+`can_init.sh`にcanの初期設定とプログラムの起動を行うコマンドを記載した.
+これを, `/usr/local/bin/`へ移動する
+```
+sudo cp can_init.sh /usr/local/bin/
+```
+実行権限を変更
+```
+sudo chmod 700 /usr/local/bin/can_init.sh
+```
+`/etc/rc.local`を開く
+```
+sudo vim /etc/rc.local
+```
+最後の行で, `can_init.sh`を実行する
+```
+_IP=$(hostname -I) || true
+if [ "$_IP" ]; then
+  printf "My IP address is %s\n" "$_IP"
+fi
+/usr/local/bin/can_init.sh & // <- これを追加
+exit 0
+```
+
+再起動する
+```
+sudo reboot
 ```
 
 状態を確認
