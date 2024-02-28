@@ -73,7 +73,7 @@ WorkingDirectory=/home/pi/NHK2024/NHK2024_R2_Raspi
 StandardOutput=inherit
 StandardError=inherit
 Restart=always
-User=pi
+User=root
 
 [Install]
 WantedBy=multi-user.target
