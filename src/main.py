@@ -5,5 +5,7 @@ class R2Controller(MainController):
         pass
 
 if __name__ == "__main__":
-    controller = R2Controller()
+    host_name = "R2.local"
+    port = 12345
+    controller = R2Controller(host_name=host_name, port=port)
     controller.main()
