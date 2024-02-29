@@ -1,7 +1,8 @@
 from NHK2024_Raspi_Library import MainController, TwoStateButtonHandler, TwoStateButton
 import json
-from typing import Dict
+from typing import Dict, Callable
 from enum import Enum
+import can
 
 class CANList(Enum):
     EMERGENCY=0x000
@@ -30,10 +31,29 @@ class ClientData:
         except KeyError as e:
             raise KeyError("Invalid key is included in the data: {e}")
             
-
+class CANMessageLister(can.Listener):
+    def __init__(self, write: Callable[[str], None], write_with_can_id: Callable[[str, int], None]):
+        # write log message to main log file function
+        self.write = write
+        # write log message to can log file function
+        self.write_with_can_id = write_with_can_id
+        super().__init__()
+    
+    def on_message_received(self, msg: can.Message):
+        can_id: int = msg.arbitration_id
+        data: bytearray = msg.data
+        
+        # write if statement here
+        
+        # write log file
+        self.write(f"Received CAN Message can_id: {can_id}, data: {data}")
+        self.write_with_can_id(f"Received CAN Message data: {data}", can_id)
+        print(f"Received CAN Message can_id: {can_id}, data: {data}")
+    
 class R2Controller(MainController):
     def __init__(self, host_name, port):
-        super().__init__(host_name, port)
+        lister = CANMessageLister()
+        super().__init__(host_name=host_name, port=port, lister=lister)
         
         # controller button state
         self.button_a_state = TwoStateButtonHandler(state=TwoStateButton.WAIT_1)
