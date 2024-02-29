@@ -32,12 +32,12 @@ class ClientData:
             raise KeyError("Invalid key is included in the data: {e}")
             
 class CANMessageLister(can.Listener):
-    def __init__(self, write: Callable[[str], None], write_with_can_id: Callable[[str, int], None]):
-        # write log message to main log file function
-        self.write = write
-        # write log message to can log file function
-        self.write_with_can_id = write_with_can_id
+    def __init__(self):
         super().__init__()
+        
+    def init_write_func(self, write: Callable[[str], None], write_with_can_id: Callable[[str, int], None]):
+        self.write = write
+        self.write_with_can_id = write_with_can_id
     
     def on_message_received(self, msg: can.Message):
         can_id: int = msg.arbitration_id
@@ -52,8 +52,12 @@ class CANMessageLister(can.Listener):
     
 class R2Controller(MainController):
     def __init__(self, host_name, port):
+        super().__init__(host_name=host_name, port=port)
+        
+        # init can message lister
         lister = CANMessageLister()
-        super().__init__(host_name=host_name, port=port, lister=lister)
+        lister.init_write_func(self.log_system.write, self.log_system.write_with_can_id)
+        self.init_can_notifier(lister)
         
         # controller button state
         self.button_a_state = TwoStateButtonHandler(state=TwoStateButton.WAIT_1)
