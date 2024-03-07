@@ -1,4 +1,6 @@
 from NHK2024_Raspi_Library import MainController, TwoStateButtonHandler, TwoStateButton
+from NHK2024_Camera_Library import cam_detect_obj
+
 import json
 from typing import Dict, Callable
 from enum import Enum
@@ -58,28 +60,43 @@ class R2Controller(MainController):
         lister = CANMessageLister()
         lister.init_write_func(self.log_system.write, self.log_system.write_with_can_id)
         self.init_can_notifier(lister)
+
+        self.FrontCam0 = cam_detect_obj.FrontCamera('src/NHK2024_Camera_Library/models/20240109best.pt', 0)
         
-        # controller button state
-        self.button_a_state = TwoStateButtonHandler(state=TwoStateButton.WAIT_1)
-        self.button_b_state = TwoStateButtonHandler()
     
     def main(self):
         self.log_system.write(f"Start R2Controller main")
         print(f"Start R2Controller main")
         try:
             while True:
-                raw_ctr_data: Dict = json.loads(self.read_udp()) # read from controller
-                
-                try:
-                    ctr_data: ClientData = ClientData(raw_ctr_data) # parse to ClientData
-                    self.parse_to_can_message(ctr_data=ctr_data) # parse to can message
-                except KeyError as e:
-                    self.log_system.write(f"Invalid key is included in the data: {e}")
-                    print(f"Invalid key is included in the data: {e}")
-                    continue
-               
+                # raw_ctr_data: Dict = json.loads(self.read_udp()) # read from controller
+                if self.FrontCam0.cap.isOpened():
+                    FRAME_WIDTH = 320
+                    FRAME_HEIGHT = 240
+                    gain = [0.1, -0.1, 1]
+
+                    items = self.FrontCam0.DetectedObjectCounter()
+                    x,y,z = self.FrontCam0.ObjectPosition()
+                    is_obtainable = self.FrontCam0.IsObtainable()
+
+                    print(x, y, z)
+
+
+                    if items == 0 :
+                        Vx = 127
+                        Vy = 127
+
+                    else:
+                        Vx = gain[0] * (x - FRAME_WIDTH / 2) + 127
+                        Vy = gain[1] * (y - FRAME_HEIGHT / 2) + 127
+                    
+                    self.write_can_bus(CANList.ROBOT_VEL.value, bytearray([int(Vx), int(Vy), 127]))
+                    
+                                       
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
+        
+
     
     def parse_to_can_message(self, ctr_data: ClientData) -> None:
         # button a
