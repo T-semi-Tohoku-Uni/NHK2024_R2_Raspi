@@ -91,7 +91,12 @@ class R2Controller(MainController):
                         Vy = gain[1] * (y - FRAME_HEIGHT / 2) + 127
                     
                     self.write_can_bus(CANList.ROBOT_VEL.value, bytearray([int(Vx), int(Vy), 127]))
-                    
+
+                    if is_obtainable:
+                        self.write_can_bus(CANList.VACUUMFAN.value, bytearray([1]))
+                        print("Obtainable!!")
+                    else:
+                        self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0]))
                                        
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
