@@ -1,3 +1,6 @@
 [submodule "src/NHK2024_Raspi_Library"]
 	path = src/NHK2024_Raspi_Library
 	url = git@github.com:T-semi-Tohoku-Uni/NHK2024_Raspi_Library.git
+[submodule "src/NHK2024_Camera_Library"]
+	path = src/NHK2024_Camera_Library
+	url = git@github.com:T-semi-Tohoku-Uni/NHK2024_Camera_Library.git
