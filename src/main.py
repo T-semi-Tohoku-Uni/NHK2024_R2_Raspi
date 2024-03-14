@@ -36,21 +36,37 @@ class ClientData:
 class CANMessageLister(can.Listener):
     def __init__(self):
         super().__init__()
-        
-    def init_write_func(self, write: Callable[[str], None], write_with_can_id: Callable[[str, int], None]):
-        self.write = write
-        self.write_with_can_id = write_with_can_id
+        self.write = None
+        self.write_with_can_id = None
     
-    def on_message_received(self, msg: can.Message):
-        can_id: int = msg.arbitration_id
-        data: bytearray = msg.data
+    def init_write_fnc(self, write: Callable[[str], None], update_received_can_log: Callable[[can.Message], None], update_send_can_log: Callable[[can.Message], None], update_error_log: Callable[[str], None]):
+        self.write = write
+        self.update_received_can_log = update_received_can_log
+        self.update_send_can_log = update_send_can_log
+        self.update_error_log = update_error_log
+    
+    def init_write_can_bus_func(self, write_can_bus: Callable[[int, bytearray], None]):
+        self.write_can_bus = write_can_bus
+    
+    def on_message_received(self, msg):
+        can_id: int = int(msg.arbitration_id)
+        data: str = msg.data.hex()
+        is_error: bool = msg.is_error_frame
         
-        # write if statement here
+        # Write if statement
+        
+        if is_error is True:
+            self.update_error_log(msg.__str__())
+            print(f"Get Error Frame: {msg.__str__()}")
         
         # write log file
-        self.write(f"Received CAN Message can_id: {can_id}, data: {data}")
-        self.write_with_can_id(f"Received CAN Message data: {data}", can_id)
-        print(f"Received CAN Message can_id: {can_id}, data: {data}")
+        if self.write is None or self.update_send_can_log is None or self.update_received_can_log is None:
+            print("write function is not initialized")
+            return
+        
+        self.write(f"Received: {msg.__str__()}")
+        self.update_received_can_log(msg)
+        print(f"Received: {msg.__str__()}")
     
 class R2Controller(MainController):
     def __init__(self, host_name, port):
@@ -58,8 +74,9 @@ class R2Controller(MainController):
         
         # init can message lister
         lister = CANMessageLister()
-        lister.init_write_func(self.log_system.write, self.log_system.write_with_can_id)
-        self.init_can_notifier(lister)
+        lister.init_write_fnc(self.log_system.write, self.log_system.update_received_can_log, self.log_system.update_send_can_log, self.log_system.update_error_log)
+        lister.init_write_can_bus_func(self.write_can_bus)
+        self.init_can_notifier(lister=lister)
 
         self.FrontCam0 = cam_detect_obj.FrontCamera('src/NHK2024_Camera_Library/models/20240109best.pt', 0)
         
