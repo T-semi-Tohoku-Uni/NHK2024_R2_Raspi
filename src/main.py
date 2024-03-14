@@ -88,13 +88,11 @@ class R2Controller(MainController):
             while True:
                 # raw_ctr_data: Dict = json.loads(self.read_udp()) # read from controller
                 if self.FrontCam0.cap.isOpened():
-                    FRAME_WIDTH = 320
-                    FRAME_HEIGHT = 240
+                    W = 0
+                    H = 550
                     gain = [0.1, -0.1, 1]
 
-                    items = self.FrontCam0.DetectedObjectCounter()
-                    x,y,z = self.FrontCam0.ObjectPosition()
-                    is_obtainable = self.FrontCam0.IsObtainable()
+                    items, x, y, z, is_obtainable = self.FrontCam0.queue.get()
 
                     print(x, y, z)
 
@@ -104,8 +102,8 @@ class R2Controller(MainController):
                         Vy = 127
 
                     else:
-                        Vx = gain[0] * (x - FRAME_WIDTH / 2) + 127
-                        Vy = gain[1] * (y - FRAME_HEIGHT / 2) + 127
+                        Vx = gain[0] * (x - W / 2) + 127
+                        Vy = gain[1] * (y - H / 2) + 127
                     
                     self.write_can_bus(CANList.ROBOT_VEL.value, bytearray([int(Vx), int(Vy), 127]))
 
