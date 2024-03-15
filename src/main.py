@@ -92,8 +92,8 @@ class R2Controller(MainController):
                 FAN_Y = cam_detect_obj.OBTAINABE_AREA_CENTER_Y
                 gain = [0.02, 0.02, 1]
 
-                #items, x, y, z, is_obtainable = self.FrontCam0.queue.get()
-                items, x, y, z, is_obtainable = (1, 0, 600, 0, False)           #print(x, y, z)
+                items, x, y, z, is_obtainable = self.FrontCam0.queue.get()
+                #items, x, y, z, is_obtainable = (1, 0, 600, 0, False)           #print(x, y, z)
 
 
                 if items == 0 :
