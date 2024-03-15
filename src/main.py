@@ -78,7 +78,7 @@ class R2Controller(MainController):
         lister.init_write_can_bus_func(self.write_can_bus)
         self.init_can_notifier(lister=lister)
 
-        self.FrontCam0 = cam_detect_obj.FrontCamera('src/NHK2024_Camera_Library/models/20240109best.pt', 0)
+        self.FrontCam0 = cam_detect_obj.FrontCamera('src/NHK2024_Camera_Library/models/20240109best.pt', 0, 4)
         
     
     def main(self):
@@ -87,32 +87,30 @@ class R2Controller(MainController):
         try:
             while True:
                 # raw_ctr_data: Dict = json.loads(self.read_udp()) # read from controller
-                if self.FrontCam0.cap.isOpened():
-                    W = 0
-                    H = 550
-                    gain = [0.1, -0.1, 1]
+                W = 0
+                H = 550
+                gain = [0.1, -0.1, 1]
 
-                    items, x, y, z, is_obtainable = self.FrontCam0.queue.get()
+                items, x, y, z, is_obtainable = self.FrontCam0.queue.get()
 
-                    print(x, y, z)
+                print(x, y, z)
 
 
-                    if items == 0 :
-                        Vx = 127
-                        Vy = 127
+                if items == 0 :
+                    Vx = 127
+                    Vy = 127
 
-                    else:
-                        Vx = gain[0] * (x - W / 2) + 127
-                        Vy = gain[1] * (y - H / 2) + 127
-                    
-                    self.write_can_bus(CANList.ROBOT_VEL.value, bytearray([int(Vx), int(Vy), 127]))
+                else:
+                    Vx = gain[0] * (x - W / 2) + 127
+                    Vy = gain[1] * (y - H / 2) + 127
+                
+                self.write_can_bus(CANList.ROBOT_VEL.value, bytearray([int(Vx), int(Vy), 127]))
 
-                    if is_obtainable:
-                        self.write_can_bus(CANList.VACUUMFAN.value, bytearray([1]))
-                        print("Obtainable!!")
-                    else:
-                        self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0]))
-                                       
+                if is_obtainable:
+                    self.write_can_bus(CANList.VACUUMFAN.value, bytearray([1]))
+                    print("Obtainable!!")
+                else:
+                    self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0]))                      
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
         
