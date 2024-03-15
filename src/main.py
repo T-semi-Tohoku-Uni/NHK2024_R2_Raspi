@@ -78,7 +78,7 @@ class R2Controller(MainController):
         lister.init_write_can_bus_func(self.write_can_bus)
         self.init_can_notifier(lister=lister)
 
-        self.FrontCam0 = cam_detect_obj.FrontCamera('src/NHK2024_Camera_Library/models/20240109best.pt', 0, 4)
+        self.FrontCam0 = cam_detect_obj.FrontCamera('src/NHK2024_Camera_Library/models/20240109best.pt', 0, 10)
         
     
     def main(self):
@@ -87,13 +87,13 @@ class R2Controller(MainController):
         try:
             while True:
                 # raw_ctr_data: Dict = json.loads(self.read_udp()) # read from controller
-                W = 0
-                H = 550
-                gain = [0.1, -0.1, 1]
+                # ロボットの中心から見たファンの座標(X,Y)
+                FAN_X = cam_detect_obj.OBTAINABE_AREA_CENTER_X
+                FAN_Y = cam_detect_obj.OBTAINABE_AREA_CENTER_Y
+                gain = [0.02, 0.02, 1]
 
-                items, x, y, z, is_obtainable = self.FrontCam0.queue.get()
-
-                print(x, y, z)
+                #items, x, y, z, is_obtainable = self.FrontCam0.queue.get()
+                items, x, y, z, is_obtainable = (1, 0, 600, 0, False)           #print(x, y, z)
 
 
                 if items == 0 :
@@ -101,8 +101,8 @@ class R2Controller(MainController):
                     Vy = 127
 
                 else:
-                    Vx = gain[0] * (x - W / 2) + 127
-                    Vy = gain[1] * (y - H / 2) + 127
+                    Vx = gain[0] * (x - FAN_X) + 127
+                    Vy = gain[1] * (y - FAN_Y) + 127
                 
                 self.write_can_bus(CANList.ROBOT_VEL.value, bytearray([int(Vx), int(Vy), 127]))
 
