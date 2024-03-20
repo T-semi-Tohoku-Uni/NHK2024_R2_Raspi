@@ -78,8 +78,9 @@ class R2Controller(MainController):
         lister.init_write_can_bus_func(self.write_can_bus)
         self.init_can_notifier(lister=lister)
 
-        self.FrontCam0 = cam_detect_obj.FrontCamera('src/NHK2024_Camera_Library/models/20240109best.pt', 0, 10)
-        
+        self.FrontCam0 = cam_detect_obj.FrontCamera(0)
+        self.MainProcess = cam_detect_obj.MainProcess('src/NHK2024_Camera_Library/models/20240109best_ncnn_model', 10)
+        self.MainProcess.thread_start(self.FrontCam0)
     
     def main(self):
         self.log_system.write(f"Start R2Controller main")
@@ -92,7 +93,7 @@ class R2Controller(MainController):
                 FAN_Y = cam_detect_obj.OBTAINABE_AREA_CENTER_Y
                 gain = [0.02, 0.02, 1]
 
-                items, x, y, z, is_obtainable = self.FrontCam0.queue.get()
+                items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
                 #items, x, y, z, is_obtainable = (1, 0, 600, 0, False)           #print(x, y, z)
 
 
