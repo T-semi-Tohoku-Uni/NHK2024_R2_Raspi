@@ -79,7 +79,7 @@ class R2Controller(MainController):
         self.init_can_notifier(lister=lister)
 
         self.FrontCam0 = cam_detect_obj.FrontCamera(0)
-        self.MainProcess = cam_detect_obj.MainProcess('src/NHK2024_Camera_Library/models/20240109best_ncnn_model', 10)
+        self.MainProcess = cam_detect_obj.MainProcess('src/NHK2024_Camera_Library/models/20240109best.pt')
         self.MainProcess.thread_start(self.FrontCam0)
     
     def main(self):
