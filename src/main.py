@@ -69,8 +69,8 @@ class CANMessageLister(can.Listener):
         print(f"Received: {msg.__str__()}")
     
 class R2Controller(MainController):
-    def __init__(self, host_name, port):
-        super().__init__(host_name=host_name, port=port)
+    def __init__(self):
+        super().__init__(is_udp=False)
         
         # init can message lister
         lister = CANMessageLister()
@@ -141,7 +141,5 @@ class R2Controller(MainController):
         self.write_can_bus(CANList.ROBOT_VEL.value, bytearray([ctr_data.v_x, ctr_data.v_y, ctr_data.omega]))
     
 if __name__ == "__main__":
-    host_name = "R2.local"
-    port = 12345
-    controller = R2Controller(host_name=host_name, port=port)
+    controller = R2Controller()
     controller.main()
