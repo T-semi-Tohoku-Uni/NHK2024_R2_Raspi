@@ -79,7 +79,7 @@ class R2Controller(MainController):
         self.init_can_notifier(lister=lister)
 
         self.FrontCam0 = cam_detect_obj.FrontCamera(0)
-        self.MainProcess = cam_detect_obj.MainProcess('src/NHK2024_Camera_Library/models/20240109best.pt')
+        self.MainProcess = cam_detect_obj.MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt')
         self.MainProcess.thread_start(self.FrontCam0)
     
     def main(self):
@@ -93,8 +93,9 @@ class R2Controller(MainController):
                 FAN_Y = cam_detect_obj.OBTAINABE_AREA_CENTER_Y
                 gain = [0.02, 0.02, 1]
 
-                items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
-                #items, x, y, z, is_obtainable = (1, 0, 600, 0, False)           #print(x, y, z)
+                # 出力画像は受け取らない
+                _, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
+                #items, x, y, z, is_obtainable = (0, 1, 0, 600, 0, False)
 
 
                 if items == 0 :
