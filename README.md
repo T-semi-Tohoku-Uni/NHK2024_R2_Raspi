@@ -140,3 +140,69 @@ nhk2024.service - NHK2024 UDP Server
      CGroup: /system.slice/nhk2024.service
              └─6867 python main.py
 ```
+
+## ラズパイでRealsenseを使えるようにしたかった
+- まず、以下を参考にやってみた
+https://github.com/IntelRealSense/librealsense/blob/development/doc/installation.md#prerequisites
+https://raspida.com/rpi-buster-error
+
+```
+sudo apt-get update --allow-releaseinfo-change
+sudo apt full-upgrade
+```
+
+- 前準備
+```
+sudo apt-get install libssl-dev libusb-1.0-0-dev libudev-dev pkg-config libgtk-3-dev
+```
+```
+sudo apt-get install git wget cmake build-essential
+```
+```
+sudo apt-get install libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev at
+```
+- librealsenceインストール
+```
+git clone https://github.com/IntelRealSense/librealsense.git
+```
+```
+./scripts/setup_udev_rules.sh
+```
+ここでPermission deniedがたくさん出てエラー
+
+
+- 次に以下を参考にやってみた
+https://github.com/IntelRealSense/librealsense/blob/master/doc/installation_raspbian.md
+https://openvino.jp/intel-realsense-camera-d435i-2/
+
+swap追加
+```
+sudo nano /etc/dphys-swapfile
+```
+CONF_SWAPSIZE=2048に変更
+
+```
+sudo /etc/init.d/dphys-swapfile restart swapon -s
+```
+
+E: Unable to locate packageが出るものは飛ばした結果、以下をインストール
+```
+sudo apt-get install -y libdrm-amdgpu1 libdrm-dev libdrm-exynos1 libdrm-freedreno1 libdrm-nouveau2 libdrm-omap1 libdrm-radeon1 libdrm-tegra0 libdrm2
+
+sudo apt-get install libglu1-mesa libglu1-mesa-dev glusterfs-common libglu1-mesa libglu1-mesa-dev
+
+sudo apt-get install libglu1-mesa libglu1-mesa-dev mesa-utils mesa-utils-extra xorg-dev libgtk-3-dev libusb-1.0-0-dev
+```
+
+librealsense install
+```
+git clone https://github.com/IntelRealSense/librealsense.git
+
+cd librealsense
+
+sudo cp config/99-realsense-libusb.rules /etc/udev/rules.d/ 
+
+sudo udevadm control --reload-rules && udevadm trigger 
+```
+
+ここでPermission deniedがたくさん出てエラー
