@@ -206,3 +206,42 @@ sudo udevadm control --reload-rules && udevadm trigger
 ```
 
 ここでPermission deniedがたくさん出てエラー
+
+- 以下を参考にやってみた
+https://github.com/datasith/Ai_Demos_RPi/wiki/Raspberry-Pi-4-and-Intel-RealSense-D435
+
+```
+sudo su
+udevadm control --reload-rules && udevadm trigger
+exit
+```
+
+pathの追加
+```
+nano ~/.bashrc
+```
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+を追加
+```
+source ~/.bashrc 
+```
+
+まだインストールしてなかったパッケージのインストール
+```
+sudo apt-get install automake libtool
+```
+
+システム領域の拡張
+```
+sudo raspi-config
+```
+Advanced Options -> Expand Filesystemsを選択し、再起動
+
+protobufのインストール
+```
+cd ~
+git clone --depth=1 -b v3.10.0 https://github.com/google/protobuf.git
+cd protobuf
+./autogen.sh
+./configure
+```
