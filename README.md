@@ -244,4 +244,13 @@ git clone --depth=1 -b v3.10.0 https://github.com/google/protobuf.git
 cd protobuf
 ./autogen.sh
 ./configure
+make -j1
+sudo make install
+cd python
+export LD_LIBRARY_PATH=../src/.libs
+python3 setup.py build --cpp_implementation 
 ```
+ error: invalid use of incomplete type ‘PyFrameObject’ {aka ‘struct _frame’}がでる。
+ ->python 3.11以降'PyFrameObject'が使えないことによるエラーらしい
+
+sudo ldconfig をして sudo make uninstall をして cd .. && rm -rf protobuf/ 
