@@ -67,6 +67,41 @@ class CANMessageLister(can.Listener):
         self.write(f"Received: {msg.__str__()}")
         self.update_received_can_log(msg)
         print(f"Received: {msg.__str__()}")
+        
+
+class BaseMovement:
+    def __init__(self):
+        pass
+
+    def move(self, v:[[float], [float], [float]]):
+        gain = [0.02, 0.02, 1]
+        TxBuffer = bytearray([127, 127, 127])
+        for i in range(3):
+            TxBuffer[i] = int(v[i] * gain[i] + 127)
+        
+        return TxBuffer
+
+    def arm(self, is_up):
+        TxBuffer = bytearray([0])
+        if is_up:
+            TxBuffer[0] = 0
+        elif is_up == False:
+            TxBuffer[0] = 1
+        else:
+            print("Invalid value")
+        return TxBuffer
+
+    def vacuum_fan(self, is_on):
+        TxBuffer = bytearray([0])
+        if is_on:
+            TxBuffer[0] = 1
+        elif is_on == False:
+            TxBuffer[0] = 0 
+        else:
+            TxBuffer[0] = 0
+            print("Invalid value")
+        return TxBuffer
+
     
 class R2Controller(MainController):
     def __init__(self):
