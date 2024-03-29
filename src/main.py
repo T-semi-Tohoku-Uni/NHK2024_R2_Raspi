@@ -38,7 +38,7 @@ class CANMessageLister(can.Listener):
         super().__init__()
         self.write = None
         self.write_with_can_id = None
-    
+        self.received_datas = [] 
     def init_write_fnc(self, write: Callable[[str], None], update_received_can_log: Callable[[can.Message], None], update_send_can_log: Callable[[can.Message], None], update_error_log: Callable[[str], None]):
         self.write = write
         self.update_received_can_log = update_received_can_log
@@ -47,14 +47,20 @@ class CANMessageLister(can.Listener):
     
     def init_write_can_bus_func(self, write_can_bus: Callable[[int, bytearray], None]):
         self.write_can_bus = write_can_bus
+
+    def store_received_data(self, msg: can.Message):
+        self.received_datas.append(msg)
+    
+    def get_received_data(self):
+        return self.received_datas
     
     def on_message_received(self, msg):
         can_id: int = int(msg.arbitration_id)
         data: str = msg.data.hex()
         is_error: bool = msg.is_error_frame
         
-        # Write if statement
-        
+        # Write if statement          
+
         if is_error is True:
             self.update_error_log(msg.__str__())
             print(f"Get Error Frame: {msg.__str__()}")
@@ -63,24 +69,62 @@ class CANMessageLister(can.Listener):
         if self.write is None or self.update_send_can_log is None or self.update_received_can_log is None:
             print("write function is not initialized")
             return
+
+        self.store_received_data(msg)
         
         self.write(f"Received: {msg.__str__()}")
         self.update_received_can_log(msg)
         print(f"Received: {msg.__str__()}")
+
+
+class BaseAction:
+    def __init__(self):
+        pass
+
+    def move(self, v:[[float], [float], [float]]):
+        gain = [0.02, 0.02, 1]
+        TxBuffer = bytearray([127, 127, 127])
+        for i in range(3):
+            TxBuffer[i] = int(v[i] * gain[i] + 127)
+        
+        return TxBuffer
+
+    def arm(self, is_up):
+        TxBuffer = bytearray([0])
+        if is_up:
+            TxBuffer[0] = 0
+        elif is_up == False:
+            TxBuffer[0] = 1
+        else:
+            TxBuffer[0] = 0
+            print("Invalid value")
+        return TxBuffer
+
+    def vacuum_fan(self, is_on):
+        TxBuffer = bytearray([0])
+        if is_on:
+            TxBuffer[0] = 1
+        elif is_on == False:
+            TxBuffer[0] = 0 
+        else:
+            TxBuffer[0] = 0
+            print("Invalid value")
+        return TxBuffer
+
     
 class R2Controller(MainController):
     def __init__(self):
-        super().__init__(is_udp=False)
+        super().__init__("tsemiR2", 11111, is_udp=False)
         
         # init can message lister
-        lister = CANMessageLister()
-        lister.init_write_fnc(self.log_system.write, self.log_system.update_received_can_log, self.log_system.update_send_can_log, self.log_system.update_error_log)
-        lister.init_write_can_bus_func(self.write_can_bus)
-        self.init_can_notifier(lister=lister)
+        self.lister = CANMessageLister()
+        self.lister.init_write_fnc(self.log_system.write, self.log_system.update_received_can_log, self.log_system.update_send_can_log, self.log_system.update_error_log)
+        self.lister.init_write_can_bus_func(self.write_can_bus)
+        self.init_can_notifier(lister=self.lister)
 
         self.FrontCam0 = cam_detect_obj.FrontCamera(0)
         self.MainProcess = cam_detect_obj.MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt')
-        self.MainProcess.thread_start(self.FrontCam0)
+        self.MainProcess.thread_start(self.FrontCam0,self.FrontCam0)
     
     def main(self):
         self.log_system.write(f"Start R2Controller main")
@@ -94,10 +138,10 @@ class R2Controller(MainController):
                 gain = [0.02, 0.02, 1]
 
                 # 出力画像は受け取らない
-                _, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
-                #items, x, y, z, is_obtainable = (0, 1, 0, 600, 0, False)
+                #_, id, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
+                id, items, x, y, z, is_obtainable = (0, 1, 0, 600, 0, False)                
 
-
+                '''
                 if items == 0 :
                     Vx = 127
                     Vy = 127
@@ -112,7 +156,8 @@ class R2Controller(MainController):
                     self.write_can_bus(CANList.VACUUMFAN.value, bytearray([1]))
                     print("Obtainable!!")
                 else:
-                    self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0]))                      
+                    self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0]))     
+                    '''                 
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
         
