@@ -67,7 +67,7 @@ class CANMessageLister(can.Listener):
         self.write(f"Received: {msg.__str__()}")
         self.update_received_can_log(msg)
         print(f"Received: {msg.__str__()}")
-        
+
 
 class BaseMovement:
     def __init__(self):
@@ -88,6 +88,7 @@ class BaseMovement:
         elif is_up == False:
             TxBuffer[0] = 1
         else:
+            TxBuffer[0] = 0
             print("Invalid value")
         return TxBuffer
 
