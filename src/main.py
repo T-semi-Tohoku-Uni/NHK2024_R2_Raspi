@@ -145,9 +145,9 @@ class field(Enum):
 
 class Behavior:
     def __init__(self, field = 0):
-        self.action = BaseAction()
-        self.state = INITIALIZING
+        self.action = BaseAction()        
         self.state_list = BehaviorList
+        self.state = self.state_list.INITIALIZING
         self.field = field
         self.max_speed = 300
 
