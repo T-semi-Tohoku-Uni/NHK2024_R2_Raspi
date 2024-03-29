@@ -47,14 +47,20 @@ class CANMessageLister(can.Listener):
     
     def init_write_can_bus_func(self, write_can_bus: Callable[[int, bytearray], None]):
         self.write_can_bus = write_can_bus
+
+    def store_received_data(self, msg: can.Message):
+        self.received_datas.append(msg)
+    
+    def get_received_data(self):
+        return self.received_datas
     
     def on_message_received(self, msg):
         can_id: int = int(msg.arbitration_id)
         data: str = msg.data.hex()
         is_error: bool = msg.is_error_frame
         
-        # Write if statement
-        
+        # Write if statement          
+
         if is_error is True:
             self.update_error_log(msg.__str__())
             print(f"Get Error Frame: {msg.__str__()}")
@@ -63,13 +69,15 @@ class CANMessageLister(can.Listener):
         if self.write is None or self.update_send_can_log is None or self.update_received_can_log is None:
             print("write function is not initialized")
             return
+
+        self.store_received_data(msg)
         
         self.write(f"Received: {msg.__str__()}")
         self.update_received_can_log(msg)
         print(f"Received: {msg.__str__()}")
 
 
-class BaseMovement:
+class BaseAction:
     def __init__(self):
         pass
 
@@ -109,10 +117,10 @@ class R2Controller(MainController):
         super().__init__(is_udp=False)
         
         # init can message lister
-        lister = CANMessageLister()
-        lister.init_write_fnc(self.log_system.write, self.log_system.update_received_can_log, self.log_system.update_send_can_log, self.log_system.update_error_log)
-        lister.init_write_can_bus_func(self.write_can_bus)
-        self.init_can_notifier(lister=lister)
+        self.lister = CANMessageLister()
+        self.lister.init_write_fnc(self.log_system.write, self.log_system.update_received_can_log, self.log_system.update_send_can_log, self.log_system.update_error_log)
+        self.lister.init_write_can_bus_func(self.write_can_bus)
+        self.init_can_notifier(lister=self.lister)
 
         self.FrontCam0 = cam_detect_obj.FrontCamera(0)
         self.MainProcess = cam_detect_obj.MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt')
@@ -132,8 +140,10 @@ class R2Controller(MainController):
                 # 出力画像は受け取らない
                 _, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
                 #items, x, y, z, is_obtainable = (0, 1, 0, 600, 0, False)
+                print(self.lister.get_received_data())
+                
 
-
+                '''
                 if items == 0 :
                     Vx = 127
                     Vy = 127
@@ -148,7 +158,8 @@ class R2Controller(MainController):
                     self.write_can_bus(CANList.VACUUMFAN.value, bytearray([1]))
                     print("Obtainable!!")
                 else:
-                    self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0]))                      
+                    self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0]))     
+                    '''                 
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
         
