@@ -165,7 +165,7 @@ class Behavior:
 
     def update_sensor_state(self, state:Dict):
         self.wall_sensor_state = state['wall_sensor']
-        self.posture_state = state['posture']
+        #self.posture_state = state['posture']
 
     def get_state(self):
         return Behavior.state
