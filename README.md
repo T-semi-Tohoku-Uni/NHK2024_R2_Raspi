@@ -236,24 +236,23 @@ sudo raspi-config
 ```
 Advanced Options -> Expand Filesystemsを選択し、再起動
 
-~~ protobufのインストール ~~
-```
-~~ cd ~ ~~
-~~ git clone --depth=1 -b v3.10.0 https://github.com/google/protobuf.git ~~
-~~ cd protobuf ~~
-~~ ./autogen.sh ~~
-~~ ./configure ~~
-~~ make -j1 ~~
-~~ sudo make install ~~
-~~ cd python ~~
-~~ export LD_LIBRARY_PATH=../src/.libs ~~
-~~ python3 setup.py build --cpp_implementation ~~ 
-```
-~~ error: invalid use of incomplete type ‘PyFrameObject’ {aka ‘struct _frame’}がでる。 ~~
-~~ ->python 3.11以降'PyFrameObject'が使えないことによるエラーらしい ~~
+~~protobufのインストール~~
 
-~~ sudo ldconfig をして sudo make uninstall をして cd .. && rm -rf protobuf/ ~~
+~~cd ~~~
+~~git clone --depth=1 -b v3.10.0 https://github.com/google/protobuf.git~~
+~~cd protobuf~~
+~~./autogen.sh~~
+~~./configure~~
+~~make -j1~~
+~~sudo make install~~
+~~cd python~~
+~~export LD_LIBRARY_PATH=../src/.libs~~
+~~python3 setup.py build --cpp_implementation~~
 
+~~error: invalid use of incomplete type ‘PyFrameObject’ {aka ‘struct _frame’}がでる。~~
+~~->python 3.11以降'PyFrameObject'が使えないことによるエラーらしい~~
+
+~~sudo ldconfig をして sudo make uninstall をして cd .. && rm -rf protobuf/~~
 protobuf,libtbb-devはインストールされていたので飛ばす
 
 librealsenseのmake
@@ -264,80 +263,10 @@ cmake .. -DBUILD_EXAMPLES=true -DCMAKE_BUILD_TYPE=Release -DFORCE_LIBUVC=true
 make -j1
 sudo make install
 ```
-
 realsense-viewerが起動できる
 
 pyrealsenseのmake
-このときenvをactivateにするとwhich python3がenvの方を指してくれる
-```
-cd ~/librealsense/build
-cmake .. -DBUILD_PYTHON_BINDINGS=bool:true -DPYTHON_EXECUTABLE=$(which python3)
-make -j1
-sudo make install
-```
-
-NHK2024_Camera_Libraryのrs_sample.pyを実行するともここでPermission deniedがたくさん出てエラー
-
-- 以下を参考にやってみた
-https://github.com/datasith/Ai_Demos_RPi/wiki/Raspberry-Pi-4-and-Intel-RealSense-D435
-
-```
-sudo su
-udevadm control --reload-rules && udevadm trigger
-exit
-```
-
-pathの追加
-~/.bashrcにexport LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-を追加
-```
-source ~/.bashrc 
-```
-
-まだインストールしてなかったパッケージのインストール
-```
-sudo apt-get install automake libtool
-```
-
-システム領域の拡張
-```
-sudo raspi-config
-```
-Advanced Options -> Expand Filesystemsを選択し、再起動
-
-~~ protobufのインストール ~~
-```
-~~ cd ~ ~~
-~~ git clone --depth=1 -b v3.10.0 https://github.com/google/protobuf.git ~~
-~~ cd protobuf ~~
-~~ ./autogen.sh ~~
-~~ ./configure ~~
-~~ make -j1 ~~
-~~ sudo make install ~~
-~~ cd python ~~
-~~ export LD_LIBRARY_PATH=../src/.libs ~~
-~~ python3 setup.py build --cpp_implementation ~~ 
-```
-~~ error: invalid use of incomplete type ‘PyFrameObject’ {aka ‘struct _frame’}がでる。 ~~
-~~ ->python 3.11以降'PyFrameObject'が使えないことによるエラーらしい ~~
-
-~~ sudo ldconfig をして sudo make uninstall をして cd .. && rm -rf protobuf/ ~~
-
-protobuf,libtbb-devはインストールされていたので飛ばす
-
-librealsenseのmake
-```
-cd ~/librealsense
-mkdir  build  && cd build
-cmake .. -DBUILD_EXAMPLES=true -DCMAKE_BUILD_TYPE=Release -DFORCE_LIBUVC=true
-make -j1
-sudo make install
-```
-
-realsense-viewerが起動できる
-
-pyrealsenseのmake
-このときenvをactivateにするとwhich python3がenvの方を指してくれる
+(このときenvをactivateにするとwhich python3がenvの方を指してくれる)
 ```
 cd ~/librealsense/build
 cmake .. -DBUILD_PYTHON_BINDINGS=bool:true -DPYTHON_EXECUTABLE=$(which python3)
@@ -348,6 +277,13 @@ sudo make install
 ```
 source ~/.bashrc
 ```
+
+openglのインストール(envをactivateにすること)
+```
+pip install pyopengl
+pip install pyopengl_accelerate
+```
+raspi-configでのGL Driverの設定は無かったので飛ばした
 
 NHK2024_Camera_Libraryのrs_sample.pyを実行すると
 no module named pyrealsense2のエラーが出る
