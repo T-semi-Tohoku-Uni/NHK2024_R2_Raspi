@@ -253,4 +253,21 @@ python3 setup.py build --cpp_implementation
  error: invalid use of incomplete type ‘PyFrameObject’ {aka ‘struct _frame’}がでる。
  ->python 3.11以降'PyFrameObject'が使えないことによるエラーらしい
 
-sudo ldconfig をして sudo make uninstall をして cd .. && rm -rf protobuf/ 
+sudo ldconfig をして sudo make uninstall をして cd .. && rm -rf protobuf/
+
+protobuf,libtbb-devはインストールされていたので飛ばす
+
+```
+cd ~/librealsense
+mkdir  build  && cd build
+cmake .. -DBUILD_EXAMPLES=true -DCMAKE_BUILD_TYPE=Release -DFORCE_LIBUVC=true
+make -j1
+sudo make install
+```
+
+```
+cd ~/librealsense/build
+cmake .. -DBUILD_PYTHON_BINDINGS=bool:true -DPYTHON_EXECUTABLE=$(which python3)
+make -j1
+sudo make install
+```
