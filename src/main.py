@@ -78,7 +78,7 @@ class CANMessageLister(can.Listener):
         
         self.write(f"Received: {msg.__str__()}")
         self.update_received_can_log(msg)
-        print(f"Received: {msg.__str__()}")
+        #print(f"Received: {msg.__str__()}")
 
 
 class BaseAction:
@@ -163,16 +163,18 @@ class R2Controller(MainController):
                     print("Obtainable!!")
                 else:
                     self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0]))     
-                    '''                 
+                 '''                 
 
-                self.sensor_states.clear()
+                
 
                 self.parse_from_can_message()
-                print(self.sensor_states)
+                if bool(self.sensor_states):
+                
+                    print(self.sensor_states)
 
+                self.sensor_states.clear()
                 self.lister.clear_received_data()
 
-                self.parse_from_can_message
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
 
