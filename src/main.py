@@ -14,6 +14,7 @@ class CANList(Enum):
     ARM=0x101
     ROBOT_VEL=0x106
     
+    CANID_ROBOT_VEL_FB=0x204
     WALL_DETECTION=0x205
     LATERAL_SHIFT=0x206
     ANGLE_DIFF=0x207
@@ -53,6 +54,9 @@ class CANMessageLister(can.Listener):
     
     def get_received_data(self):
         return self.received_datas
+
+    def clear_received_data(self):
+        self.received_datas.clear()
     
     def on_message_received(self, msg):
         can_id: int = int(msg.arbitration_id)
@@ -125,6 +129,8 @@ class R2Controller(MainController):
         self.FrontCam0 = cam_detect_obj.FrontCamera(0)
         self.MainProcess = cam_detect_obj.MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt')
         self.MainProcess.thread_start(self.FrontCam0,self.FrontCam0)
+
+        self.sensor_states = []
     
     def main(self):
         self.log_system.write(f"Start R2Controller main")
@@ -158,11 +164,36 @@ class R2Controller(MainController):
                 else:
                     self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0]))     
                     '''                 
+
+                self.sensor_states.clear()
+
+                self.parse_from_can_message()
+                print(self.sensor_states)
+
+                self.lister.clear_received_data()
+
+                self.parse_from_can_message
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
-        
 
-    
+    def parse_from_can_message(self) -> None:
+        received_datas = self.lister.get_received_data()
+        for data in received_datas:
+            can_id: int = int(data.arbitration_id)
+            if can_id == CANList.WALL_DETECTION.value:
+                
+                wall_detection_state = {
+                    "Front right": not(bool(data.data[0] & 0x20)), 
+                    "Front left": not(bool(data.data[0] & 0x10)), 
+                    "Right front": not(bool(data.data[0] & 0x40)), 
+                    "Right rear": not(bool(data.data[0] & 0x80)),  
+                    "Left front": not(bool(data.data[0] & 0x08)), 
+                    "Left rear": not(bool(data.data[0] & 0x04))
+                    }
+
+                self.sensor_states.append(wall_detection_state)       
+                
+
     def parse_to_can_message(self, ctr_data: ClientData) -> None:
         # button a
         self.button_a_state.handle_button(
