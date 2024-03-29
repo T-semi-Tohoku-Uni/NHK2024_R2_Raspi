@@ -176,7 +176,7 @@ class Behavior:
             return False
         apploach_speed = 100
                 
-        elif direction == direction.RIGHT.value:
+        if direction == direction.RIGHT.value:
             if self.wall_sensor_state['Right front'] == False and self.wall_sensor_state['Right rear'] == False:
                 return self.action.move([apploach_speed, self.max_speed,  0])
             elif self.wall_sensor_state['Right front'] == False and self.wall_sensor_state['Right rear'] == True:
@@ -211,14 +211,10 @@ class Behavior:
                 return self.action.move([self.max_speed, apploach_speed * 0.3, 0])
             else:
                 print("Invalid wall sensor state")
-                return False
-
-
-
-        elif direction == direction.FRONT:   
+                return False 
+        elif direction == direction.BACK.value:
+            pass
             
-            
-    
     def action(self):
         if self.state == self.state_list.INITIALIZING:
             self.change_state(self.state_list.INITIALIZIED)
