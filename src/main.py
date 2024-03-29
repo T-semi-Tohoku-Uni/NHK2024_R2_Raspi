@@ -139,9 +139,7 @@ class R2Controller(MainController):
 
                 # 出力画像は受け取らない
                 #_, id, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
-                id, items, x, y, z, is_obtainable = (0, 1, 0, 600, 0, False)
-                print(self.lister.get_received_data())
-                
+                id, items, x, y, z, is_obtainable = (0, 1, 0, 600, 0, False)                
 
                 '''
                 if items == 0 :
