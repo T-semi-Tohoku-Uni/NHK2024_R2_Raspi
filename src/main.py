@@ -115,6 +115,124 @@ class BaseAction:
             print("Invalid value")
         return TxBuffer
 
+class BehaviorList(Enum):
+    INITIALIZING = 0
+    INITIALIZIED = 4
+    START_READY = 8
+    ALIVE_AREA1 = 12
+    ALIVE_SLOPE12 = 16
+    ALIVE_AREA2_OUTER_WALL = 20
+    ALIVE_AREA2_WATER_WALL = 24
+    ALIVE_SLOPE23 = 28
+    ALIVE_AREA3_FIRST_ATTEMPT = 32
+    ALIVE_BALL_SEARCH_WIDE = 36
+    ALIVE_BALL_SEARCH_NARROW = 40
+    ALIVE_BALL_OBTAINIG = 44
+    ALIVE_MOVE_TO_SILO = 48
+    ALIVE_CHOOSE_SILO = 52
+    ALIVE_PUTIN = 56
+
+
+class direction(Enum):
+    RIGHT = 0
+    FRONT = 1
+    LEFT = 2
+    BACK = 3  
+
+class field(Enum):
+    BLUE = 0
+    RED = 1
+
+class Behavior:
+    def __init__(self, field = 0):
+        self.action = BaseAction()
+        self.state = INITIALIZING
+        self.state_list = BehaviorList
+        self.field = field
+        self.max_speed = 300
+
+        '''
+        listner = CANMessageLister()
+        listner.init_write_can_bus_func(self.write_can_bus)
+        self.can_transmit_func = lister.write_can_bus
+        self.can_receive = None
+        '''
+        self.wall_sensor_state: list[bool] = [False, False, False, False, False, False, False, False]
+        self.posture_state: list[float] = {0, 0, 0, 0}
+
+    def change_state(self, state):
+        self.state = state
+
+    def update_sensor_state(self, state:Dict):
+        self.wall_sensor_state = state['wall_sensor']
+        self.posture_state = state['posture']
+
+    def get_state(self):
+        return Behavior.state
+
+    def move_along_wall(self, direction:int, move_direction:bool = True):
+        if direction > 3:
+            print("Invalid direction")
+            return False
+        apploach_speed = 100
+                
+        elif direction == direction.RIGHT.value:
+            if self.wall_sensor_state['Right front'] == False and self.wall_sensor_state['Right rear'] == False:
+                return self.action.move([apploach_speed, self.max_speed,  0])
+            elif self.wall_sensor_state['Right front'] == False and self.wall_sensor_state['Right rear'] == True:
+                return self.action.move([apploach_speed * 0.6, self.max_speed, -0.5])
+            elif self.wall_sensor_state['Right front'] == True and self.wall_sensor_state['Right rear'] == False:
+                return self.action.move([apploach_speed * 0.6, self.max_speed, 0.5])
+            elif self.wall_sensor_state['Right front'] == True and self.wall_sensor_state['Right rear'] == True:
+                return self.action.move([apploach_speed * 0.3, self.max_speed, 0])  
+            else:
+                print("Invalid wall sensor state")
+                return False
+        elif direction == direction.LEFT.value:
+            if self.wall_sensor_state['Left front'] == False and self.wall_sensor_state['Left rear'] == False:
+                return self.action.move([-1 * apploach_speed, self.max_speed,  0])
+            elif self.wall_sensor_state['Left front'] == False and self.wall_sensor_state['Left rear'] == True:
+                return self.action.move([-0.6 * apploach_speed, -self.max_speed, 0.5])
+            elif self.wall_sensor_state['Left front'] == True and self.wall_sensor_state['Left rear'] == False:
+                return self.action.move([-0.6 * apploach_speed, -self.max_speed, -0.5])
+            elif self.wall_sensor_state['Left front'] == True and self.wall_sensor_state['Left rear'] == True:
+                return self.action.move([-0.3 * apploach_speed, -self.max_speed, 0])  
+            else:
+                print("Invalid wall sensor state")
+                return False
+        elif direction == direction.FRONT.value:
+            if self.wall_sensor_state['Front right'] == False and self.wall_sensor_state['Front left'] == False:
+                return self.action.move([self.max_speed, apploach_speed, 0])
+            elif self.wall_sensor_state['Front right'] == False and self.wall_sensor_state['Front left'] == True:
+                return self.action.move([self.max_speed, apploach_speed * 0.6, 0.5])
+            elif self.wall_sensor_state['Front right'] == True and self.wall_sensor_state['Front left'] == False:
+                return self.action.move([self.max_speed, apploach_speed * 0.6, -0.5])
+            elif self.wall_sensor_state['Front right'] == True and self.wall_sensor_state['Front left'] == True:
+                return self.action.move([self.max_speed, apploach_speed * 0.3, 0])
+            else:
+                print("Invalid wall sensor state")
+                return False
+
+
+
+        elif direction == direction.FRONT:   
+            
+            
+    
+    def action(self):
+        if self.state == self.state_list.INITIALIZING:
+            self.change_state(self.state_list.INITIALIZIED)
+        elif self.state == self.state_list.INITIALIZIED:
+            self.change_state(self.state_list.START_READY)
+        elif self.state == self.state_list.START_READY:
+            self.change_state(self.state_list.ALIVE_AREA1)
+        elif self.state == self.state_list.ALIVE_AREA1:
+            self.move_along_wall(direction.RIGHT)                
+        elif self.state == self.state_list.ALIVE_SLOPE12:
+            pass
+        elif self.state == self.state_list.ALIVE_AREA2_OUTER_WALL:
+            pass
+
     
 class R2Controller(MainController):
     def __init__(self):
@@ -130,7 +248,8 @@ class R2Controller(MainController):
         self.MainProcess = cam_detect_obj.MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt')
         self.MainProcess.thread_start(self.FrontCam0,self.FrontCam0)
 
-        self.sensor_states = []
+        self.sensor_states = {}
+        self.behavior = Behavior()
     
     def main(self):
         self.log_system.write(f"Start R2Controller main")
@@ -169,11 +288,12 @@ class R2Controller(MainController):
 
                 self.parse_from_can_message()
                 if bool(self.sensor_states):
-                
-                    print(self.sensor_states)
+                    self.behavior.update_sensor_state(self.sensor_states)
 
                 self.sensor_states.clear()
                 self.lister.clear_received_data()
+
+                self.write_can_bus(CANList.ROBOT_VEL.value, self.behavior.move_along_wall(direction.RIGHT))
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
@@ -193,7 +313,7 @@ class R2Controller(MainController):
                     "Left rear": not(bool(data.data[0] & 0x04))
                     }
 
-                self.sensor_states.append(wall_detection_state)       
+                self.sensor_states['wall_sensor'] = wall_detection_state    
                 
 
     def parse_to_can_message(self, ctr_data: ClientData) -> None:
