@@ -133,23 +133,22 @@ class BehaviorList(Enum):
     ALIVE_PUTIN = 56
 
 
-class direction(Enum):
+class Direction(Enum):
     RIGHT = 0
     FRONT = 1
     LEFT = 2
     BACK = 3  
 
-class field(Enum):
+class Field(Enum):
     BLUE = 0
     RED = 1
 
 class Behavior:
     def __init__(self, field = 0):
-        self.action = BaseAction()        
+        self.base_action = BaseAction()        
         self.state_list = BehaviorList
         self.state = self.state_list.INITIALIZING
         self.field = field
-        self.max_speed = 300
 
         '''
         listner = CANMessageLister()
@@ -161,6 +160,7 @@ class Behavior:
         self.posture_state: list[float] = {0, 0, 0, 0}
 
     def change_state(self, state):
+        print('Change state from {} to {}'.format(self.state, state))
         self.state = state
 
     def update_sensor_state(self, state:Dict):
@@ -174,58 +174,45 @@ class Behavior:
         if direction > 3:
             print("Invalid direction")
             return False
-        apploach_speed = 100
+        max_speed = 500 
+        apploach_speed = 300
+        align_angle_speed = 1
                 
-        if direction == direction.RIGHT.value:
+        if direction == Direction.RIGHT.value:
             if self.wall_sensor_state['Right front'] == False and self.wall_sensor_state['Right rear'] == False:
-                return self.action.move([apploach_speed, self.max_speed,  0])
+                return self.base_action.move([apploach_speed, max_speed,  0])
             elif self.wall_sensor_state['Right front'] == False and self.wall_sensor_state['Right rear'] == True:
-                return self.action.move([apploach_speed * 0.6, self.max_speed, -0.5])
+                return self.base_action.move([apploach_speed * 0.6, max_speed, -1 * align_angle_speed])
             elif self.wall_sensor_state['Right front'] == True and self.wall_sensor_state['Right rear'] == False:
-                return self.action.move([apploach_speed * 0.6, self.max_speed, 0.5])
+                return self.base_action.move([apploach_speed * 0.6, max_speed, align_angle_speed])
             elif self.wall_sensor_state['Right front'] == True and self.wall_sensor_state['Right rear'] == True:
-                return self.action.move([apploach_speed * 0.3, self.max_speed, 0])  
+                return self.base_action.move([apploach_speed * 0.3, max_speed, 0])  
             else:
                 print("Invalid wall sensor state")
                 return False
-        elif direction == direction.LEFT.value:
-            if self.wall_sensor_state['Left front'] == False and self.wall_sensor_state['Left rear'] == False:
-                return self.action.move([-1 * apploach_speed, self.max_speed,  0])
-            elif self.wall_sensor_state['Left front'] == False and self.wall_sensor_state['Left rear'] == True:
-                return self.action.move([-0.6 * apploach_speed, -self.max_speed, 0.5])
-            elif self.wall_sensor_state['Left front'] == True and self.wall_sensor_state['Left rear'] == False:
-                return self.action.move([-0.6 * apploach_speed, -self.max_speed, -0.5])
-            elif self.wall_sensor_state['Left front'] == True and self.wall_sensor_state['Left rear'] == True:
-                return self.action.move([-0.3 * apploach_speed, -self.max_speed, 0])  
-            else:
-                print("Invalid wall sensor state")
-                return False
-        elif direction == direction.FRONT.value:
-            if self.wall_sensor_state['Front right'] == False and self.wall_sensor_state['Front left'] == False:
-                return self.action.move([self.max_speed, apploach_speed, 0])
-            elif self.wall_sensor_state['Front right'] == False and self.wall_sensor_state['Front left'] == True:
-                return self.action.move([self.max_speed, apploach_speed * 0.6, 0.5])
-            elif self.wall_sensor_state['Front right'] == True and self.wall_sensor_state['Front left'] == False:
-                return self.action.move([self.max_speed, apploach_speed * 0.6, -0.5])
-            elif self.wall_sensor_state['Front right'] == True and self.wall_sensor_state['Front left'] == True:
-                return self.action.move([self.max_speed, apploach_speed * 0.3, 0])
-            else:
-                print("Invalid wall sensor state")
-                return False 
-        elif direction == direction.BACK.value:
+        elif direction == Direction.LEFT.value:
+            pass
+        elif direction == Direction.FRONT.value:
+            pass
+        elif direction == Direction.BACK.value:
             pass
             
     def action(self):
         if self.state == self.state_list.INITIALIZING:
             self.change_state(self.state_list.INITIALIZIED)
+            return
         elif self.state == self.state_list.INITIALIZIED:
             self.change_state(self.state_list.START_READY)
+            return
         elif self.state == self.state_list.START_READY:
             self.change_state(self.state_list.ALIVE_AREA1)
+            return
         elif self.state == self.state_list.ALIVE_AREA1:
-            self.move_along_wall(direction.RIGHT)                
+            self.move_along_wall(Direction.RIGHT.value)     
+            return      
         elif self.state == self.state_list.ALIVE_SLOPE12:
             pass
+            
         elif self.state == self.state_list.ALIVE_AREA2_OUTER_WALL:
             pass
 
@@ -284,12 +271,16 @@ class R2Controller(MainController):
 
                 self.parse_from_can_message()
                 if bool(self.sensor_states):
-                    self.behavior.update_sensor_state(self.sensor_states)
+                    self.behavior.update_sensor_state(self.sensor_states) 
+
+                print('Action!!')
+                self.behavior.action()
 
                 self.sensor_states.clear()
                 self.lister.clear_received_data()
 
-                self.write_can_bus(CANList.ROBOT_VEL.value, self.behavior.move_along_wall(direction.RIGHT.value))
+                
+
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
