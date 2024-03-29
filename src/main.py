@@ -38,7 +38,7 @@ class CANMessageLister(can.Listener):
         super().__init__()
         self.write = None
         self.write_with_can_id = None
-    
+        self.received_datas = [] 
     def init_write_fnc(self, write: Callable[[str], None], update_received_can_log: Callable[[can.Message], None], update_send_can_log: Callable[[can.Message], None], update_error_log: Callable[[str], None]):
         self.write = write
         self.update_received_can_log = update_received_can_log
@@ -114,7 +114,7 @@ class BaseAction:
     
 class R2Controller(MainController):
     def __init__(self):
-        super().__init__(is_udp=False)
+        super().__init__("tsemiR2", 11111, is_udp=False)
         
         # init can message lister
         self.lister = CANMessageLister()
@@ -124,7 +124,7 @@ class R2Controller(MainController):
 
         self.FrontCam0 = cam_detect_obj.FrontCamera(0)
         self.MainProcess = cam_detect_obj.MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt')
-        self.MainProcess.thread_start(self.FrontCam0)
+        self.MainProcess.thread_start(self.FrontCam0,self.FrontCam0)
     
     def main(self):
         self.log_system.write(f"Start R2Controller main")
@@ -138,8 +138,8 @@ class R2Controller(MainController):
                 gain = [0.02, 0.02, 1]
 
                 # 出力画像は受け取らない
-                _, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
-                #items, x, y, z, is_obtainable = (0, 1, 0, 600, 0, False)
+                #_, id, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
+                id, items, x, y, z, is_obtainable = (0, 1, 0, 600, 0, False)
                 print(self.lister.get_received_data())
                 
 
