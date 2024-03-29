@@ -289,7 +289,7 @@ class R2Controller(MainController):
                 self.sensor_states.clear()
                 self.lister.clear_received_data()
 
-                self.write_can_bus(CANList.ROBOT_VEL.value, self.behavior.move_along_wall(direction.RIGHT))
+                self.write_can_bus(CANList.ROBOT_VEL.value, self.behavior.move_along_wall(direction.RIGHT.value))
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
