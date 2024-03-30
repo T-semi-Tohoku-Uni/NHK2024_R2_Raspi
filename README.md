@@ -142,7 +142,7 @@ nhk2024.service - NHK2024 UDP Server
 ```
 
 ## ラズパイでRealsenseを使えるようにしたかった
-- まず、以下を参考にやってみた
+- まず、以下を参考にやってみた\
 https://github.com/IntelRealSense/librealsense/blob/development/doc/installation.md#prerequisites
 https://raspida.com/rpi-buster-error
 
@@ -170,7 +170,7 @@ git clone https://github.com/IntelRealSense/librealsense.git
 ```
 ここでPermission deniedがたくさん出てエラー
 
-- 次に以下を参考にやってみた
+- 次に以下を参考にやってみた\
 https://github.com/IntelRealSense/librealsense/blob/master/doc/installation_raspbian.md
 https://openvino.jp/intel-realsense-camera-d435i-2/
 
@@ -193,7 +193,7 @@ sudo apt-get install libglu1-mesa libglu1-mesa-dev glusterfs-common libglu1-mesa
 sudo apt-get install libglu1-mesa libglu1-mesa-dev mesa-utils mesa-utils-extra xorg-dev libgtk-3-dev libusb-1.0-0-dev
 ```
 
-librealsense install
+librealsenseのクローン
 ```
 git clone https://github.com/IntelRealSense/librealsense.git
 
@@ -206,7 +206,7 @@ sudo udevadm control --reload-rules && udevadm trigger
 
 ここでPermission deniedがたくさん出てエラー
 
-- 以下を参考にやってみた
+- 以下を参考にやってみた\
 https://github.com/datasith/Ai_Demos_RPi/wiki/Raspberry-Pi-4-and-Intel-RealSense-D435
 
 ```
@@ -216,16 +216,12 @@ exit
 ```
 
 pathの追加
-```
-nano ~/.bashrc
-```
-export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-を追加
+~/.bashrcにexport LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATHを追加
 ```
 source ~/.bashrc 
 ```
 
-まだインストールしてなかったパッケージのインストール
+- まだインストールしてなかったパッケージのインストール
 ```
 sudo apt-get install automake libtool
 ```
@@ -265,25 +261,24 @@ sudo make install
 ```
 realsense-viewerが起動できる
 
-pyrealsenseのmake
-(このときenvをactivateにするとwhich python3がenvの方を指してくれる)
-```
-cd ~/librealsense/build
+~~pyrealsenseのmake
+(このときenvをactivateにするとwhich python3がenvの方を指してくれる)~~\
+
+~~cd ~/librealsense/build
 cmake .. -DBUILD_PYTHON_BINDINGS=bool:true -DPYTHON_EXECUTABLE=$(which python3)
 make -j1
-sudo make install
-```
-~/.bashrcにexport PYTHONPATH=$PYTHONPATH:/home/pi/NHK2024/NHK2024_R2_Raspi/env/lib/を追加
-```
-source ~/.bashrc
-```
+sudo make install~~\
+~~(~/.bashrcにexport PYTHONPATH=$PYTHONPATH:/home/pi/NHK2024/NHK2024_R2_Raspi/env/lib/を追加)~~
+~~`source ~/.bashrc`~~
 
-openglのインストール(envをactivateにすること)
-```
-pip install pyopengl
-pip install pyopengl_accelerate
-```
+~~openglのインストール(envをactivateにすること)~~
+~~pip install pyopengl
+pip install pyopengl_accelerate~~
 raspi-configでのGL Driverの設定は無かったので飛ばした
 
-NHK2024_Camera_Libraryのrs_sample.pyを実行すると
-no module named pyrealsense2のエラーが出る
+~~NHK2024_Camera_Libraryのrs_sample.pyを実行すると
+no module named pyrealsense2のエラーが出る~~
+
+librealsenseのみmakeした状態で
+~/.bashrcにexport PYTHONPATH=$PYTHONPATH:/usr/local/OFFを追加して
+source ~/.bashrcを実行するとpyrealsense2が使えるようになった
