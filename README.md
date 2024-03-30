@@ -234,7 +234,7 @@ Advanced Options -> Expand Filesystemsを選択し、再起動
 
 ~~protobufのインストール~~
 
-~~cd ~~~
+~~`cd ~`~~
 ~~git clone --depth=1 -b v3.10.0 https://github.com/google/protobuf.git~~
 ~~cd protobuf~~
 ~~./autogen.sh~~
@@ -248,7 +248,7 @@ Advanced Options -> Expand Filesystemsを選択し、再起動
 ~~error: invalid use of incomplete type ‘PyFrameObject’ {aka ‘struct _frame’}がでる。~~
 ~~->python 3.11以降'PyFrameObject'が使えないことによるエラーらしい~~
 
-~~sudo ldconfig をして sudo make uninstall をして cd .. && rm -rf protobuf/~~
+~~sudo ldconfig をして sudo make uninstall をして cd .. && rm -rf protobuf/~~\
 protobuf,libtbb-devはインストールされていたので飛ばす
 
 librealsenseのmake
@@ -264,11 +264,11 @@ realsense-viewerが起動できる
 ~~pyrealsenseのmake
 (このときenvをactivateにするとwhich python3がenvの方を指してくれる)~~\
 
-~~cd ~/librealsense/build
+~~`cd ~/librealsense/build`
 cmake .. -DBUILD_PYTHON_BINDINGS=bool:true -DPYTHON_EXECUTABLE=$(which python3)
 make -j1
 sudo make install~~\
-~~(~/.bashrcにexport PYTHONPATH=$PYTHONPATH:/home/pi/NHK2024/NHK2024_R2_Raspi/env/lib/を追加)~~
+~~`~/.bashrcにexport PYTHONPATH=$PYTHONPATH:/home/pi/NHK2024/NHK2024_R2_Raspi/env/lib/を追加`~~
 ~~`source ~/.bashrc`~~
 
 ~~openglのインストール(envをactivateにすること)~~
