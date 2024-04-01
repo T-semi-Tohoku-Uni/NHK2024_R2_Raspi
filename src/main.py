@@ -243,11 +243,10 @@ class R2Controller(MainController):
                 # ロボットの中心から見たファンの座標(X,Y)
                 FAN_X = cam_detect_obj.OBTAINABE_AREA_CENTER_X
                 FAN_Y = cam_detect_obj.OBTAINABE_AREA_CENTER_Y
-                gain = [0.02, 0.02, 1]
 
                 # 出力画像は受け取らない
-                #_, id, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
-                id, items, x, y, z, is_obtainable = (0, 1, 0, 600, 0, False)                
+                _, id, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
+                #id, items, x, y, z, is_obtainable = (0, 1, 0, 600, 0, False)                
 
                 '''
                 if items == 0 :
@@ -265,10 +264,19 @@ class R2Controller(MainController):
                     print("Obtainable!!")
                 else:
                     self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0]))     
-                 '''                 
+                 '''
+                v = [0, 0, 0]
+                gain = [0.3, 0.3, 0]
+                pos = (x, y, 0)
+                for i in range(3):
+                    v[i] = gain[i] * pos[i]
 
+                if items == 0:
+                    v = [0, 0, 0]
+                print(v)
+                self.write_can_bus(CANList.ROBOT_VEL.value, self.behavior.base_action.move(v))
                 
-
+                '''
                 self.parse_from_can_message()
                 if bool(self.sensor_states):
                     self.behavior.update_sensor_state(self.sensor_states) 
@@ -279,7 +287,7 @@ class R2Controller(MainController):
                 self.sensor_states.clear()
                 self.lister.clear_received_data()
 
-                
+                '''
 
 
         except KeyboardInterrupt:
