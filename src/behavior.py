@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Dict, List
 import hardware_module
 from hardware_module import CANList
-
+from NHK2024_Raspi_Library import LogSystem
 
 # 基本的な動作を表すクラス
 class BaseAction:
@@ -52,6 +52,7 @@ class Behavior:
         ALIVE_MOVE_TO_SILO = 48
         ALIVE_CHOOSE_SILO = 52
         ALIVE_PUTIN = 56
+
     def __init__(self, field=0):
         self.base_action = BaseAction()
 
@@ -61,16 +62,19 @@ class Behavior:
         self.wall_sensor_state: list[bool] = [False, False, False, False, False, False, False, False]
         self.posture_state: list[float] = {0, 0, 0, 0}
 
+        self.log_system = LogSystem()
+
     def change_state(self, state):
         print('Change state from {} to {}'.format(self.state, state))
+        self.log_system.write('Change state from {} to {}'.format(self.state, state))
         self.state = state
 
     def update_sensor_state(self, state: Dict):
         self.wall_sensor_state = state['wall_sensor']
-        # self.posture_state = state['posture']
+        self.posture_state = state['posture']
 
     def get_state(self):
-        return Behavior.state
+        return self.state
 
     def move_along_wall(self, direction: int, move_direction: bool = True):
         if direction > 3:
@@ -100,20 +104,23 @@ class Behavior:
             pass
 
     def action(self):
-        if self.state == self.state_list.INITIALIZING:
-            self.change_state(self.state_list.INITIALIZIED)
+        if self.state == self.BehaviorList.INITIALIZING:
+            self.change_state(self.BehaviorList.INITIALIZED)
             return
-        elif self.state == self.state_list.INITIALIZIED:
-            self.change_state(self.state_list.START_READY)
+        elif self.state == self.BehaviorList.INITIALIZED:
+            self.change_state(self.BehaviorList.START_READY)
             return
-        elif self.state == self.state_list.START_READY:
-            self.change_state(self.state_list.ALIVE_AREA1)
+        elif self.state == self.BehaviorList.START_READY:
+            self.change_state(self.BehaviorList.ALIVE_AREA1)
             return
-        elif self.state == self.state_list.ALIVE_AREA1:
+        elif self.state == self.BehaviorList.ALIVE_AREA1:
             self.move_along_wall(Direction.RIGHT.value)
+            if self.posture_state[0] < 0:
+                self.change_state(self.BehaviorList.ALIVE_SLOPE12)
             return
-        elif self.state == self.state_list.ALIVE_SLOPE12:
-            pass
 
-        elif self.state == self.state_list.ALIVE_AREA2_OUTER_WALL:
-            pass
+
+def __main__():
+    while True:
+        behavior = Behavior()
+        behavior.action()
