@@ -1,10 +1,11 @@
 from NHK2024_Raspi_Library import MainController, TwoStateButtonHandler, TwoStateButton
-from NHK2024_Camera_Library import cam_detect_obj
+from NHK2024_Camera_Library import UpperCamera,LowerCamera,RearCamera,MainProcess,OBTAINABE_AREA_CENTER_X,OBTAINABE_AREA_CENTER_Y
 
 import json
 from typing import Dict, Callable
 from enum import Enum
 import can
+import time 
 
 class CANList(Enum):
     EMERGENCY=0x000
@@ -227,9 +228,12 @@ class R2Controller(MainController):
         self.lister.init_write_can_bus_func(self.write_can_bus)
         self.init_can_notifier(lister=self.lister)
 
-        self.FrontCam0 = cam_detect_obj.FrontCamera(0)
-        self.MainProcess = cam_detect_obj.MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt')
-        self.MainProcess.thread_start(self.FrontCam0,self.FrontCam0)
+        UpperCam = UpperCamera(0)
+        LowerCam = LowerCamera(2)
+        RearCam = LowerCamera(2)
+        
+        self.MainProcess = MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt',UpperCam,LowerCam,RearCam)
+        self.MainProcess.thread_start()
 
         self.sensor_states = {}
         self.behavior = Behavior()
@@ -237,16 +241,20 @@ class R2Controller(MainController):
     def main(self):
         self.log_system.write(f"Start R2Controller main")
         print(f"Start R2Controller main")
+        self.write_can_bus(CANList.ARM.value, self.behavior.base_action.arm(True))
+        self.write_can_bus(CANList.VACUUMFAN.value, self.behavior.base_action.vacuum_fan(False))
+        time.sleep(3)
         try:
             while True:
                 # raw_ctr_data: Dict = json.loads(self.read_udp()) # read from controller
-                # ロボットの中心から見たファンの座標(X,Y)
-                FAN_X = cam_detect_obj.OBTAINABE_AREA_CENTER_X
-                FAN_Y = cam_detect_obj.OBTAINABE_AREA_CENTER_Y
 
                 # 出力画像は受け取らない
-                _, id, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
-                #id, items, x, y, z, is_obtainable = (0, 1, 0, 600, 0, False)                
+                _, id, output_data = self.MainProcess.q_frames_list[-1].get()
+                
+                if id == 1:  #Lower Camera
+                    items, x, y, z, is_obtainable = output_data
+                else:
+                    items, x, y, z, is_obtainable = (-1, -1, -1, -1, False)                
 
                 '''
                 if items == 0 :
@@ -265,16 +273,25 @@ class R2Controller(MainController):
                 else:
                     self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0]))     
                  '''
+                #is_obtainable = False
+                #while is_obtainable == False:
                 v = [0, 0, 0]
-                gain = [0.3, 0.3, 0]
-                pos = (x, y, 0)
+                gain = [3, 3, 0]
+                pos = (x-OBTAINABE_AREA_CENTER_X, y-OBTAINABE_AREA_CENTER_Y, 0)
                 for i in range(3):
                     v[i] = gain[i] * pos[i]
 
                 if items == 0:
                     v = [0, 0, 0]
-                print(v)
+                print(f"id:{id}, items:{items}, v:{v}, is_obtainable:{is_obtainable}")
                 self.write_can_bus(CANList.ROBOT_VEL.value, self.behavior.base_action.move(v))
+                
+                if is_obtainable:
+                    self.write_can_bus(CANList.ARM.value, self.behavior.base_action.arm(False))
+                    self.write_can_bus(CANList.VACUUMFAN.value, self.behavior.base_action.vacuum_fan(True))
+                    time.sleep(1)
+                    self.write_can_bus(CANList.ARM.value, self.behavior.base_action.arm(True))
+                    break
                 
                 '''
                 self.parse_from_can_message()
@@ -292,6 +309,7 @@ class R2Controller(MainController):
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
+            self.MainProcess.finish()
 
     def parse_from_can_message(self) -> None:
         received_datas = self.lister.get_received_data()
