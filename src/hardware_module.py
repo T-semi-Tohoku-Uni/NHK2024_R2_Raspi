@@ -23,7 +23,7 @@ class HWBaseModule:
         READY = 2
         RUNNING = 3
         STOP = 4
-    def __init__(self, can_id: int, can_id_feedback, can_id_error: int = 0x000)
+    def __init__(self, can_id: int, can_id_feedback, can_id_error: int = 0x000):
         self.can_bus = can.interface.Bus(channel='can0', bustype='socketcan', bitrate=1000000, fd=True, data_bitrate=2000000)
         self.can_receive = None
         self.can_id = can_id
