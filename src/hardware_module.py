@@ -43,14 +43,16 @@ class Arm(HWBaseModule):
         self.can_id = CANList.ARM.value
         self.can_id_feedback = None
         self.can_id_error = CANList.EMERGENCY.value
+        self.can_message = None
 
         self.state = self.ArmState.DOWN
 
     def up(self):
-        return bytearray([0x00])
+
+        return self.can_id, bytearray([0x00])
 
     def down(self):
-        return bytearray([0x01])
+        return self.can_id, bytearray([0x01])
 
     def get_state(self):
         return self.base_state, self.state
@@ -69,10 +71,10 @@ class VacuumFan(HWBaseModule):
         self.state = self.VacuumFanState.OFF
 
     def on(self):
-        return bytearray([0x01])
+        return self.can_id, bytearray([0x01])
 
     def off(self):
-        return bytearray([0x00])
+        return self.can_id, bytearray([0x00])
 
     def get_state(self):
         return self.base_state, self.state
