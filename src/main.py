@@ -14,7 +14,7 @@ class CANList(Enum):
     ARM=0x101
     ROBOT_VEL=0x106
     
-    CANID_ROBOT_VEL_FB=0x204
+    ROBOT_VEL_FB=0x204
     WALL_DETECTION=0x205
     LATERAL_SHIFT=0x206
     ANGLE_DIFF=0x207
@@ -163,12 +163,12 @@ class Behavior:
         print('Change state from {} to {}'.format(self.state, state))
         self.state = state
 
-    def update_sensor_state(self, state:Dict):
+    def update_sensor_state(self, state: Dict):
         self.wall_sensor_state = state['wall_sensor']
         #self.posture_state = state['posture']
 
     def get_state(self):
-        return Behavior.state
+        return self.state
 
     def move_along_wall(self, direction:int, move_direction:bool = True):
         if direction > 3:
