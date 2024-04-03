@@ -18,7 +18,12 @@ class BaseAction:
         gain = [1/16, 1/16, 50]
         tx_buffer = bytearray([127, 127, 127])
         for i in range(3):
-            tx_buffer[i] = int(v[i] * gain[i] + 127)
+            b = int(v[i] * gain[i] + 127)
+            if b > 255:
+                b = 255
+            elif b < 0:
+                b = 0
+            tx_buffer[i] = int(b)
 
         return CANList.ROBOT_VEL.value, tx_buffer
 
@@ -55,7 +60,7 @@ class BehaviorList(Enum):
 
 
 class Behavior:
-    def __init__(self, field: Field, enable_log=True):
+    def __init__(self, field: Field, center_obtainable_area, enable_log=True):
         self.base_action = BaseAction()
 
         self.state = BehaviorList.INITIALIZING
@@ -71,6 +76,9 @@ class Behavior:
         }
         self.posture_state: list[float] = [0, 0, 0, 0]
         self.sensor_state: Dict = {}
+        self.camera_state: tuple = ()
+
+        self.center_obtainable_area = center_obtainable_area
 
         self.max_speed = 1000
         self.position = [0, 0, 0]
@@ -94,6 +102,7 @@ class Behavior:
         self.sensor_state = state
         self.wall_sensor_state = state['wall_sensor']
         self.posture_state = state['posture']
+        self.camera_state = state['camera']
 
     def get_state(self):
         return self.state
@@ -133,16 +142,13 @@ class Behavior:
         self.can_messages.clear()
         if self.state == BehaviorList.INITIALIZING:
             self.change_state(BehaviorList.INITIALIZED)
-            return self.can_messages
 
         elif self.state == BehaviorList.INITIALIZED:
             self.change_state(BehaviorList.START_READY)
-            return self.can_messages
 
         #スタート準備OK
         elif self.state == BehaviorList.START_READY:
             self.change_state(BehaviorList.ALIVE_AREA1)
-            return self.can_messages
 
         #エリア１の壁に沿って進む
         elif self.state == BehaviorList.ALIVE_AREA1:
@@ -152,7 +158,6 @@ class Behavior:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
             if self.posture_state[0] < 0:
                 self.change_state(self.BehaviorList.ALIVE_SLOPE12)
-            return self.can_messages
 
         #スロープのぼる
         elif self.state == BehaviorList.ALIVE_SLOPE12:
@@ -164,7 +169,6 @@ class Behavior:
             #坂から抜けだしたら次の状態へ
             if self.posture_state[0] > 0:
                 self.can_messages.append(self.change_state(self.BehaviorList.ALIVE_AREA2_OUTER_WALL))
-            return self.can_messages
 
         #エリア２のスロープから水ゾーンの壁への遷移
         elif self.state == BehaviorList.ALIVE_AREA2_OUTER_WALL:
@@ -182,7 +186,6 @@ class Behavior:
                 self.change_state(BehaviorList.ALIVE_AREA2_WATER_WALL)
 
             self.can_messages.append(self.base_action.move(v))
-            return self.can_messages
 
         #水ゾーンの壁に伝って進む
         elif self.state == BehaviorList.ALIVE_AREA2_WATER_WALL:
@@ -201,8 +204,6 @@ class Behavior:
                 elif not self.wall_sensor_state[0]:
                     self.change_state(BehaviorList.ALIVE_APPROACH_SLOPE23)
 
-            return self.can_messages
-
         #スロープに近づく
         elif self.state == BehaviorList.ALIVE_APPROACH_SLOPE23:
             self.can_messages.append(self.base_action.move([0, 300, 0]))
@@ -210,8 +211,47 @@ class Behavior:
 
             #右後ろのセンサが反応しなくなったら
             if not self.wall_sensor_state[0]:
+                #ちょっと進んでから右折
                 self.change_state(BehaviorList.ALIVE_SLOPE23)
-            return self.can_messages
+        
+        elif self.state == BehaviorList.ALIVE_SLOPE23:
+            self.can_messages.append(self.base_action.move(0, self.max_speed, 0))
+
+            #スロープ検出した後，平面検出するまで進む
+            if self.posture_state[0] > 0:
+                self.change_state(BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT)
+        
+        elif self.state == BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT:
+            radius = 2000
+            sign = 1
+            if self.field == Field.BLUE:
+                sign = 1
+
+            if self.field == Field.RED:
+                sign = -1
+            self.can_messages.append(self.base_action.move(0, self.max_speed, self.max_speed/radius))
+
+        elif self.state == BehaviorList.ALIVE_BALL_OBTAINIG:
+            num, x, y, z, is_obtainable = self.camera_state
+            if num > 0:
+                v = [0, 0, 0]
+                gain = 3, 3, 0
+                pos = x - self.center_obtainable_area[0], y - self.center_obtainable_area[1], z
+
+                for i in range(3):
+                    v[i] = gain[i] * pos[i]
+
+                self.can_messages.append(self.base_action.move(v))
+            
+            elif num == 0:
+                self.can_messages.append(self.base_action.move((0, 0, 0.3)))
+
+            if is_obtainable:
+                self.can_messages.append(self.base_action.arm.down())
+                self.can_messages.append(self.base_action.fan.on())
+                self.change_state(BehaviorList.ALIVE_MOVE_TO_SILO)
+                
+        return self.can_messages
 
 
 if __name__ == '__main__':

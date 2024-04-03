@@ -6,7 +6,7 @@ from typing import Dict, Callable
 from enum import Enum
 import can
 
-from behavior import Direction, Field, Behavior
+from behavior import Direction, Field, Behavior, BehaviorList
 from hardware_module import CANList
     
 
@@ -81,19 +81,21 @@ class R2Controller(MainController):
         self.lister.init_write_can_bus_func(self.write_can_bus)
         self.init_can_notifier(lister=self.lister)
 
-        #self.FrontCam0 = cam_detect_obj.FrontCamera(0)
-        #self.MainProcess = cam_detect_obj.MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt')
-        #self.MainProcess.thread_start(self.FrontCam0,self.FrontCam0)
+        self.FrontCam0 = cam_detect_obj.FrontCamera(0)
+        self.MainProcess = cam_detect_obj.MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt')
+        self.MainProcess.thread_start(self.FrontCam0)
 
         self.sensor_states = {
                 'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
-                'posture': [0, 0, 0, 0]
+                'posture': [0, 0, 0, 0],
+                'camera': (0, 0, 0, 600, 0, False)
             }
-        self.behavior = Behavior(Field.BLUE)
+        self.behavior = Behavior(Field.BLUE, (cam_detect_obj.OBTAINABE_AREA_CENTER_X, cam_detect_obj.OBTAINABE_AREA_CENTER_Y))
     
     def main(self):
         self.log_system.write(f"Start R2Controller main")
         print(f"Start R2Controller main")
+        self.behavior.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
         try:
             while True:
                 # raw_ctr_data: Dict = json.loads(self.read_udp()) # read from controller
@@ -102,8 +104,9 @@ class R2Controller(MainController):
                 FAN_Y = cam_detect_obj.OBTAINABE_AREA_CENTER_Y
 
                 # 出力画像は受け取らない
-                #_, id, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
-                id, items, x, y, z, is_obtainable = (0, 1, 0, 600, 0, False)                
+                _, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
+                self.sensor_states['camera'] = (items, x, y, z, is_obtainable)
+                #self.sensor_states['camera'] = (0, 1, 0, 600, 0, False)   
 
                 '''
                 if items == 0 :
@@ -129,8 +132,8 @@ class R2Controller(MainController):
                 #print(self.behavior.sensor_state)
                 commands = self.behavior.action()
 
-                #for c in commands:
-                #    self.write_can_bus(c[0], c[1])
+                for c in commands:
+                    self.write_can_bus(c[0], c[1])
 
                 self.lister.clear_received_data()
 
@@ -154,7 +157,6 @@ class R2Controller(MainController):
                     }
 
                 self.sensor_states['wall_sensor'] = wall_detection_state
-                print(wall_detection_state)
 
     def parse_to_can_message(self, ctr_data: ClientData) -> None:
         # button a
