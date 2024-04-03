@@ -14,8 +14,8 @@ class BaseAction:
         self.fan = hardware_module.VacuumFan()
         pass
 
-    def move(self, v: [[float], [float], [float]]):
-        gain = [0.02, 0.02, 1]
+    def move(self, v:List):
+        gain = [1/16, 1/16, 50]
         tx_buffer = bytearray([127, 127, 127])
         for i in range(3):
             tx_buffer[i] = int(v[i] * gain[i] + 127)
@@ -180,7 +180,9 @@ class Behavior:
             #機体が横向きになったら次の状態へ
             if self.posture_state[0] > center:
                 self.change_state(BehaviorList.ALIVE_AREA2_WATER_WALL)
-            return self.can_messages.append(self.base_action.move(v))
+
+            self.can_messages.append(self.base_action.move(v))
+            return self.can_messages
 
         #水ゾーンの壁に伝って進む
         elif self.state == BehaviorList.ALIVE_AREA2_WATER_WALL:
