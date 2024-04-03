@@ -155,7 +155,7 @@ class R2Controller(MainController):
 
                 self.sensor_states['wall_sensor'] = wall_detection_state
                 print(wall_detection_state)
-                
+
     def parse_to_can_message(self, ctr_data: ClientData) -> None:
         # button a
         self.button_a_state.handle_button(
