@@ -76,3 +76,52 @@ class VacuumFan(HWBaseModule):
 
     def get_state(self):
         return self.base_state, self.state
+
+
+class Position(Enum):
+    RIGHT_REAR = 0
+    RIGHT_FRONT = 1
+    FRONT_RIGHT = 2
+    FRONT_LEFT = 3
+    LEFT_FRONT = 4
+    LEFT_REAR = 5
+
+
+class WallSensors:            # このクラスはWallSensorクラスのリストを持つ
+    class WallSensor(HWBaseModule):
+        class WallSensorState(Enum):
+            ON = 0
+            OFF = 1
+
+        def __init__(self, can_id: int, can_id_feedback: int, position: Position):
+            super().__init__(can_id, can_id_feedback, CANList.EMERGENCY.value)
+            self.position = position
+            self.state = self.WallSensorState.OFF
+
+        def set_state(self, state: WallSensorState):
+            self.state = state
+
+        def get_state(self):
+            return self.base_state, self.state
+
+    def __init__(self):
+        super().__init__(CANList.WALL_DETECTION.value, CANList.WALL_DETECTION.value, CANList.EMERGENCY.value)
+
+        self.list = [
+            self.WallSensor(CANList.WALL_DETECTION.value, CANList.WALL_DETECTION.value, Position.RIGHT_REAR),
+            self.WallSensor(CANList.WALL_DETECTION.value, CANList.WALL_DETECTION.value, Position.RIGHT_FRONT),
+            self.WallSensor(CANList.WALL_DETECTION.value, CANList.WALL_DETECTION.value, Position.FRONT_RIGHT),
+            self.WallSensor(CANList.WALL_DETECTION.value, CANList.WALL_DETECTION.value, Position.FRONT_LEFT),
+            self.WallSensor(CANList.WALL_DETECTION.value, CANList.WALL_DETECTION.value, Position.LEFT_FRONT),
+            self.WallSensor(CANList.WALL_DETECTION.value, CANList.WALL_DETECTION.value, Position.LEFT_REAR)
+        ]
+
+        self.state_list = [sensor.get_state() for sensor in self.list]
+
+    def get_state(self):
+        return self.state_list
+
+    def set_state(self, state_list):
+        for i, state in enumerate(state_list):
+            self.list[i].set_state(state)
+            self.state_list[i] = self.list[i].get_state()
