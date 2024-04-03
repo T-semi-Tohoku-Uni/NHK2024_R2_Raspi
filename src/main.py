@@ -81,12 +81,15 @@ class R2Controller(MainController):
         self.lister.init_write_can_bus_func(self.write_can_bus)
         self.init_can_notifier(lister=self.lister)
 
-        self.FrontCam0 = cam_detect_obj.FrontCamera(0)
-        self.MainProcess = cam_detect_obj.MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt')
-        self.MainProcess.thread_start(self.FrontCam0,self.FrontCam0)
+        #self.FrontCam0 = cam_detect_obj.FrontCamera(0)
+        #self.MainProcess = cam_detect_obj.MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt')
+        #self.MainProcess.thread_start(self.FrontCam0,self.FrontCam0)
 
-        self.sensor_states = {}
-        self.behavior = Behavior()
+        self.sensor_states = {
+                'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
+                'posture': [0, 0, 0, 0]
+            }
+        self.behavior = Behavior(Field.BLUE)
     
     def main(self):
         self.log_system.write(f"Start R2Controller main")
@@ -99,8 +102,8 @@ class R2Controller(MainController):
                 FAN_Y = cam_detect_obj.OBTAINABE_AREA_CENTER_Y
 
                 # 出力画像は受け取らない
-                _, id, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
-                #id, items, x, y, z, is_obtainable = (0, 1, 0, 600, 0, False)                
+                #_, id, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
+                id, items, x, y, z, is_obtainable = (0, 1, 0, 600, 0, False)                
 
                 '''
                 if items == 0 :
@@ -119,29 +122,17 @@ class R2Controller(MainController):
                 else:
                     self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0]))     
                  '''
-                v = [0, 0, 0]
-                gain = [0.3, 0.3, 0]
-                pos = (x, y, 0)
-                for i in range(3):
-                    v[i] = gain[i] * pos[i]
-
-                if items == 0:
-                    v = [0, 0, 0]
-                print(v)
-                self.write_can_bus(CANList.ROBOT_VEL.value, self.behavior.base_action.move(v))
                 
-                '''
                 self.parse_from_can_message()
-                if bool(self.sensor_states):
-                    self.behavior.update_sensor_state(self.sensor_states) 
+                self.behavior.update_sensor_state(self.sensor_states) 
 
-                print('Action!!')
-                self.behavior.action()
+                #print(self.behavior.sensor_state)
+                commands = self.behavior.action()
 
-                self.sensor_states.clear()
+                #for c in commands:
+                #    self.write_can_bus(c[0], c[1])
+
                 self.lister.clear_received_data()
-
-                '''
 
 
         except KeyboardInterrupt:
@@ -162,9 +153,9 @@ class R2Controller(MainController):
                     "Left rear": not(bool(data.data[0] & 0x04))
                     }
 
-                self.sensor_states['wall_sensor'] = wall_detection_state    
+                self.sensor_states['wall_sensor'] = wall_detection_state
+                print(wall_detection_state)
                 
-
     def parse_to_can_message(self, ctr_data: ClientData) -> None:
         # button a
         self.button_a_state.handle_button(
