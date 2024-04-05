@@ -140,3 +140,145 @@ nhk2024.service - NHK2024 UDP Server
      CGroup: /system.slice/nhk2024.service
              └─6867 python main.py
 ```
+
+## ラズパイでRealsenseを使えるようにしたかった
+- まず、以下を参考にやってみた\
+https://github.com/IntelRealSense/librealsense/blob/development/doc/installation.md#prerequisites
+https://raspida.com/rpi-buster-error
+
+```
+sudo apt-get update --allow-releaseinfo-change
+sudo apt full-upgrade
+```
+
+- 前準備
+```
+sudo apt-get install libssl-dev libusb-1.0-0-dev libudev-dev pkg-config libgtk-3-dev
+```
+```
+sudo apt-get install git wget cmake build-essential
+```
+```
+sudo apt-get install libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev at
+```
+- librealsenceインストール
+```
+git clone https://github.com/IntelRealSense/librealsense.git
+```
+```
+./scripts/setup_udev_rules.sh
+```
+ここでPermission deniedがたくさん出てエラー
+
+- 次に以下を参考にやってみた\
+https://github.com/IntelRealSense/librealsense/blob/master/doc/installation_raspbian.md
+https://openvino.jp/intel-realsense-camera-d435i-2/
+
+swap追加
+```
+sudo nano /etc/dphys-swapfile
+```
+CONF_SWAPSIZE=2048に変更
+
+```
+sudo /etc/init.d/dphys-swapfile restart swapon -s
+```
+
+E: Unable to locate packageが出るものは飛ばした結果、以下をインストール
+```
+sudo apt-get install -y libdrm-amdgpu1 libdrm-dev libdrm-exynos1 libdrm-freedreno1 libdrm-nouveau2 libdrm-omap1 libdrm-radeon1 libdrm-tegra0 libdrm2
+
+sudo apt-get install libglu1-mesa libglu1-mesa-dev glusterfs-common libglu1-mesa libglu1-mesa-dev
+
+sudo apt-get install libglu1-mesa libglu1-mesa-dev mesa-utils mesa-utils-extra xorg-dev libgtk-3-dev libusb-1.0-0-dev
+```
+
+librealsenseのクローン
+```
+git clone https://github.com/IntelRealSense/librealsense.git
+
+cd librealsense
+
+sudo cp config/99-realsense-libusb.rules /etc/udev/rules.d/ 
+
+sudo udevadm control --reload-rules && udevadm trigger 
+```
+
+ここでPermission deniedがたくさん出てエラー
+
+- 以下を参考にやってみた\
+https://github.com/datasith/Ai_Demos_RPi/wiki/Raspberry-Pi-4-and-Intel-RealSense-D435
+
+```
+sudo su
+udevadm control --reload-rules && udevadm trigger
+exit
+```
+
+pathの追加
+~/.bashrcにexport LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATHを追加
+```
+source ~/.bashrc 
+```
+
+- まだインストールしてなかったパッケージのインストール
+```
+sudo apt-get install automake libtool
+```
+
+システム領域の拡張
+```
+sudo raspi-config
+```
+Advanced Options -> Expand Filesystemsを選択し、再起動
+
+~~protobufのインストール~~
+
+~~`cd ~`~~
+~~git clone --depth=1 -b v3.10.0 https://github.com/google/protobuf.git~~
+~~cd protobuf~~
+~~./autogen.sh~~
+~~./configure~~
+~~make -j1~~
+~~sudo make install~~
+~~cd python~~
+~~export LD_LIBRARY_PATH=../src/.libs~~
+~~python3 setup.py build --cpp_implementation~~
+
+~~error: invalid use of incomplete type ‘PyFrameObject’ {aka ‘struct _frame’}がでる。~~
+~~->python 3.11以降'PyFrameObject'が使えないことによるエラーらしい~~
+
+~~sudo ldconfig をして sudo make uninstall をして cd .. && rm -rf protobuf/~~\
+protobuf,libtbb-devはインストールされていたので飛ばす
+
+librealsenseのmake
+```
+cd ~/librealsense
+mkdir  build  && cd build
+cmake .. -DBUILD_EXAMPLES=true -DCMAKE_BUILD_TYPE=Release -DFORCE_LIBUVC=true
+make -j1
+sudo make install
+```
+realsense-viewerが起動できる
+
+~~pyrealsenseのmake
+(このときenvをactivateにするとwhich python3がenvの方を指してくれる)~~\
+
+~~`cd ~/librealsense/build`
+cmake .. -DBUILD_PYTHON_BINDINGS=bool:true -DPYTHON_EXECUTABLE=$(which python3)
+make -j1
+sudo make install~~\
+~~`~/.bashrcにexport PYTHONPATH=$PYTHONPATH:/home/pi/NHK2024/NHK2024_R2_Raspi/env/lib/を追加`~~
+~~`source ~/.bashrc`~~
+
+~~openglのインストール(envをactivateにすること)~~
+~~pip install pyopengl
+pip install pyopengl_accelerate~~
+raspi-configでのGL Driverの設定は無かったので飛ばした
+
+~~NHK2024_Camera_Libraryのrs_sample.pyを実行すると
+no module named pyrealsense2のエラーが出る~~
+
+librealsenseのみmakeした状態で
+~/.bashrcにexport PYTHONPATH=$PYTHONPATH:/usr/local/OFFを追加して
+source ~/.bashrcを実行するとpyrealsense2が使えるようになった
