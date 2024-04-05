@@ -151,8 +151,8 @@ class Behavior:
 
         #スタート準備OK
         elif self.state == BehaviorList.START_READY:
-            #self.change_state(BehaviorList.ALIVE_AREA1)
-            self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
+            self.change_state(BehaviorList.ALIVE_AREA1)
+            #self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
 
         #エリア１の壁に沿って進む
         elif self.state == BehaviorList.ALIVE_AREA1:
