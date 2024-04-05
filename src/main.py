@@ -1,10 +1,11 @@
 from NHK2024_Raspi_Library import MainController, TwoStateButtonHandler, TwoStateButton
-from NHK2024_Camera_Library import cam_detect_obj
+from NHK2024_Camera_Library import UpperCamera,LowerCamera,RearCamera,MainProcess,OBTAINABE_AREA_CENTER_X,OBTAINABE_AREA_CENTER_Y
 
 import json
 from typing import Dict, Callable
 from enum import Enum
 import can
+import time 
 
 import time
 
@@ -83,27 +84,26 @@ class R2Controller(MainController):
         self.lister.init_write_can_bus_func(self.write_can_bus)
         self.init_can_notifier(lister=self.lister)
 
-        self.FrontCam0 = cam_detect_obj.FrontCamera(1)
-        self.MainProcess = cam_detect_obj.MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt')
-        self.MainProcess.thread_start(self.FrontCam0)
+        UpperCam = UpperCamera(0)
+        LowerCam = LowerCamera(2)
+        RearCam = LowerCamera(2)
+        
+        self.MainProcess = MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt',UpperCam,LowerCam,RearCam)
+        self.MainProcess.thread_start()
 
         self.sensor_states = {
                 'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
                 'posture': [0, 0, 0, 0],
                 'camera': (0, 0, 0, 600, 0, False)
             }
-        self.behavior = Behavior(Field.BLUE, (cam_detect_obj.OBTAINABE_AREA_CENTER_X, cam_detect_obj.OBTAINABE_AREA_CENTER_Y))
+        self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y))
     
     def main(self):
         self.log_system.write(f"Start R2Controller main")
         print(f"Start R2Controller main")
-
         try:
             while True:
                 # raw_ctr_data: Dict = json.loads(self.read_udp()) # read from controller
-                # ロボットの中心から見たファンの座標(X,Y)
-                FAN_X = cam_detect_obj.OBTAINABE_AREA_CENTER_X
-                FAN_Y = cam_detect_obj.OBTAINABE_AREA_CENTER_Y
 
                 
                 # 出力画像は受け取らない
@@ -129,6 +129,7 @@ class R2Controller(MainController):
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
+            self.MainProcess.finish()
 
     def parse_from_can_message(self) -> None:
         received_datas = self.lister.get_received_data()
