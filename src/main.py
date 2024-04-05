@@ -6,6 +6,8 @@ from typing import Dict, Callable
 from enum import Enum
 import can
 
+import time
+
 from behavior import Direction, Field, Behavior, BehaviorList
 from hardware_module import CANList
     
@@ -81,7 +83,7 @@ class R2Controller(MainController):
         self.lister.init_write_can_bus_func(self.write_can_bus)
         self.init_can_notifier(lister=self.lister)
 
-        self.FrontCam0 = cam_detect_obj.FrontCamera(0)
+        self.FrontCam0 = cam_detect_obj.FrontCamera(1)
         self.MainProcess = cam_detect_obj.MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt')
         self.MainProcess.thread_start(self.FrontCam0)
 
@@ -95,7 +97,7 @@ class R2Controller(MainController):
     def main(self):
         self.log_system.write(f"Start R2Controller main")
         print(f"Start R2Controller main")
-        self.behavior.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
+
         try:
             while True:
                 # raw_ctr_data: Dict = json.loads(self.read_udp()) # read from controller
@@ -103,33 +105,20 @@ class R2Controller(MainController):
                 FAN_X = cam_detect_obj.OBTAINABE_AREA_CENTER_X
                 FAN_Y = cam_detect_obj.OBTAINABE_AREA_CENTER_Y
 
+                
                 # 出力画像は受け取らない
-                _, items, x, y, z, is_obtainable = self.MainProcess.q_results.get()
-                self.sensor_states['camera'] = (items, x, y, z, is_obtainable)
+                _, id, num, x, y, z, is_obtainable = self.MainProcess.q_results.get()
+                self.sensor_states['camera'] = (num, x, y, z, is_obtainable)
                 #self.sensor_states['camera'] = (0, 1, 0, 600, 0, False)   
-
+                
+                #テスト用
                 '''
-                if items == 0 :
-                    Vx = 127
-                    Vy = 127
-
-                else:
-                    Vx = gain[0] * (x - FAN_X) + 127
-                    Vy = gain[1] * (y - FAN_Y) + 127
-                
-                self.write_can_bus(CANList.ROBOT_VEL.value, bytearray([int(Vx), int(Vy), 127]))
-
-                if is_obtainable:
-                    self.write_can_bus(CANList.VACUUMFAN.value, bytearray([1]))
-                    print("Obtainable!!")
-                else:
-                    self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0]))     
-                 '''
-                
+                if not self.behavior.get_state == BehaviorList.ALIVE_BALL_OBTAINIG:
+                    self.behavior.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
+                '''
                 self.parse_from_can_message()
                 self.behavior.update_sensor_state(self.sensor_states) 
 
-                #print(self.behavior.sensor_state)
                 commands = self.behavior.action()
 
                 for c in commands:

@@ -128,11 +128,11 @@ class Behavior:
             else:
                 print("Invalid wall sensor state")
                 return False
-        elif direction == Direction.LEFT.value:
+        elif direction == Direction.LEFT:
             pass
-        elif direction == Direction.FRONT.value:
+        elif direction == Direction.FRONT:
             pass
-        elif direction == Direction.BACK.value:
+        elif direction == Direction.BACK:
             pass
 
     def calculate_position(self):
@@ -141,14 +141,18 @@ class Behavior:
     def action(self):
         self.can_messages.clear()
         if self.state == BehaviorList.INITIALIZING:
+            self.can_messages.append(self.base_action.fan.off())
+            self.can_messages.append(self.base_action.arm.up())
             self.change_state(BehaviorList.INITIALIZED)
 
         elif self.state == BehaviorList.INITIALIZED:
+            time.sleep(1)
             self.change_state(BehaviorList.START_READY)
 
         #スタート準備OK
         elif self.state == BehaviorList.START_READY:
-            self.change_state(BehaviorList.ALIVE_AREA1)
+            #self.change_state(BehaviorList.ALIVE_AREA1)
+            self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
 
         #エリア１の壁に沿って進む
         elif self.state == BehaviorList.ALIVE_AREA1:
@@ -235,8 +239,10 @@ class Behavior:
             num, x, y, z, is_obtainable = self.camera_state
             if num > 0:
                 v = [0, 0, 0]
-                gain = 3, 3, 0
+                gain = 2, 2, 0
                 pos = x - self.center_obtainable_area[0], y - self.center_obtainable_area[1], z
+
+                print(pos)
 
                 for i in range(3):
                     v[i] = gain[i] * pos[i]
