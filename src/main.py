@@ -5,7 +5,6 @@ import json
 from typing import Dict, Callable
 from enum import Enum
 import can
-import time 
 
 import time
 
@@ -107,8 +106,9 @@ class R2Controller(MainController):
 
                 
                 # 出力画像は受け取らない
-                _, id, num, x, y, z, is_obtainable = self.MainProcess.q_results.get()
-                self.sensor_states['camera'] = (num, x, y, z, is_obtainable)
+                frame, id, output_data = self.MainProcess.q_frames_list[-1].get()
+                if id == 1:
+                    self.sensor_states['camera'] = output_data
                 #self.sensor_states['camera'] = (0, 1, 0, 600, 0, False)   
                 
                 #テスト用
@@ -147,28 +147,6 @@ class R2Controller(MainController):
                     }
 
                 self.sensor_states['wall_sensor'] = wall_detection_state
-
-    def parse_to_can_message(self, ctr_data: ClientData) -> None:
-        # button a
-        self.button_a_state.handle_button(
-            is_pressed = ctr_data.btn_a,
-            action_send_0 = lambda: self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0])),
-            action_send_1 = lambda: self.write_can_bus(CANList.VACUUMFAN.value, bytearray([1])),
-            # action_send_0 = lambda: print("send 0"), # For debug
-            # action_send_1 = lambda: print("send 1"), # For debug
-        )
-        
-        # button b
-        self.button_b_state.handle_button(
-            is_pressed = ctr_data.btn_b,
-            action_send_0 = lambda: self.write_can_bus(CANList.ARM.value, bytearray([0])),
-            action_send_1 = lambda: self.write_can_bus(CANList.ARM.value, bytearray([1])),
-            # action_send_0 = lambda: print("send 0"), # For debug
-            # action_send_1 = lambda: print("send 1"), # For debug
-        )
-        
-        # send v and omega
-        self.write_can_bus(CANList.ROBOT_VEL.value, bytearray([ctr_data.v_x, ctr_data.v_y, ctr_data.omega]))
     
 if __name__ == "__main__":
     controller = R2Controller()
