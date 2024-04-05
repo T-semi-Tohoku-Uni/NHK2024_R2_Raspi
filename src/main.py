@@ -7,19 +7,10 @@ from enum import Enum
 import can
 import time 
 
-class CANList(Enum):
-    EMERGENCY=0x000
-    BATTERY_ERROR=0x001
-    
-    VACUUMFAN=0x100
-    ARM=0x101
-    ROBOT_VEL=0x106
-    
-    CANID_ROBOT_VEL_FB=0x204
-    WALL_DETECTION=0x205
-    LATERAL_SHIFT=0x206
-    ANGLE_DIFF=0x207
-    LINE_DETECT=0x208
+import time
+
+from behavior import Direction, Field, Behavior, BehaviorList
+from hardware_module import CANList
     
 
 class ClientData:
@@ -34,7 +25,8 @@ class ClientData:
             self.btn_y = data["btn_y"]
         except KeyError as e:
             raise KeyError("Invalid key is included in the data: {e}")
-            
+
+
 class CANMessageLister(can.Listener):
     def __init__(self):
         super().__init__()
@@ -82,142 +74,6 @@ class CANMessageLister(can.Listener):
         #print(f"Received: {msg.__str__()}")
 
 
-class BaseAction:
-    def __init__(self):
-        pass
-
-    def move(self, v:[[float], [float], [float]]):
-        gain = [0.02, 0.02, 1]
-        TxBuffer = bytearray([127, 127, 127])
-        for i in range(3):
-            TxBuffer[i] = int(v[i] * gain[i] + 127)
-        
-        return TxBuffer
-
-    def arm(self, is_up):
-        TxBuffer = bytearray([0])
-        if is_up:
-            TxBuffer[0] = 0
-        elif is_up == False:
-            TxBuffer[0] = 1
-        else:
-            TxBuffer[0] = 0
-            print("Invalid value")
-        return TxBuffer
-
-    def vacuum_fan(self, is_on):
-        TxBuffer = bytearray([0])
-        if is_on:
-            TxBuffer[0] = 1
-        elif is_on == False:
-            TxBuffer[0] = 0 
-        else:
-            TxBuffer[0] = 0
-            print("Invalid value")
-        return TxBuffer
-
-class BehaviorList(Enum):
-    INITIALIZING = 0
-    INITIALIZIED = 4
-    START_READY = 8
-    ALIVE_AREA1 = 12
-    ALIVE_SLOPE12 = 16
-    ALIVE_AREA2_OUTER_WALL = 20
-    ALIVE_AREA2_WATER_WALL = 24
-    ALIVE_SLOPE23 = 28
-    ALIVE_AREA3_FIRST_ATTEMPT = 32
-    ALIVE_BALL_SEARCH_WIDE = 36
-    ALIVE_BALL_SEARCH_NARROW = 40
-    ALIVE_BALL_OBTAINIG = 44
-    ALIVE_MOVE_TO_SILO = 48
-    ALIVE_CHOOSE_SILO = 52
-    ALIVE_PUTIN = 56
-
-
-class Direction(Enum):
-    RIGHT = 0
-    FRONT = 1
-    LEFT = 2
-    BACK = 3  
-
-class Field(Enum):
-    BLUE = 0
-    RED = 1
-
-class Behavior:
-    def __init__(self, field = 0):
-        self.base_action = BaseAction()        
-        self.state_list = BehaviorList
-        self.state = self.state_list.INITIALIZING
-        self.field = field
-
-        '''
-        listner = CANMessageLister()
-        listner.init_write_can_bus_func(self.write_can_bus)
-        self.can_transmit_func = lister.write_can_bus
-        self.can_receive = None
-        '''
-        self.wall_sensor_state: list[bool] = [False, False, False, False, False, False, False, False]
-        self.posture_state: list[float] = {0, 0, 0, 0}
-
-    def change_state(self, state):
-        print('Change state from {} to {}'.format(self.state, state))
-        self.state = state
-
-    def update_sensor_state(self, state:Dict):
-        self.wall_sensor_state = state['wall_sensor']
-        #self.posture_state = state['posture']
-
-    def get_state(self):
-        return Behavior.state
-
-    def move_along_wall(self, direction:int, move_direction:bool = True):
-        if direction > 3:
-            print("Invalid direction")
-            return False
-        max_speed = 500 
-        apploach_speed = 300
-        align_angle_speed = 1
-                
-        if direction == Direction.RIGHT.value:
-            if self.wall_sensor_state['Right front'] == False and self.wall_sensor_state['Right rear'] == False:
-                return self.base_action.move([apploach_speed, max_speed,  0])
-            elif self.wall_sensor_state['Right front'] == False and self.wall_sensor_state['Right rear'] == True:
-                return self.base_action.move([apploach_speed * 0.6, max_speed, -1 * align_angle_speed])
-            elif self.wall_sensor_state['Right front'] == True and self.wall_sensor_state['Right rear'] == False:
-                return self.base_action.move([apploach_speed * 0.6, max_speed, align_angle_speed])
-            elif self.wall_sensor_state['Right front'] == True and self.wall_sensor_state['Right rear'] == True:
-                return self.base_action.move([apploach_speed * 0.3, max_speed, 0])  
-            else:
-                print("Invalid wall sensor state")
-                return False
-        elif direction == Direction.LEFT.value:
-            pass
-        elif direction == Direction.FRONT.value:
-            pass
-        elif direction == Direction.BACK.value:
-            pass
-            
-    def action(self):
-        if self.state == self.state_list.INITIALIZING:
-            self.change_state(self.state_list.INITIALIZIED)
-            return
-        elif self.state == self.state_list.INITIALIZIED:
-            self.change_state(self.state_list.START_READY)
-            return
-        elif self.state == self.state_list.START_READY:
-            self.change_state(self.state_list.ALIVE_AREA1)
-            return
-        elif self.state == self.state_list.ALIVE_AREA1:
-            self.move_along_wall(Direction.RIGHT.value)     
-            return      
-        elif self.state == self.state_list.ALIVE_SLOPE12:
-            pass
-            
-        elif self.state == self.state_list.ALIVE_AREA2_OUTER_WALL:
-            pass
-
-    
 class R2Controller(MainController):
     def __init__(self):
         super().__init__("tsemiR2", 11111, is_udp=False)
@@ -235,76 +91,40 @@ class R2Controller(MainController):
         self.MainProcess = MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt',UpperCam,LowerCam,RearCam)
         self.MainProcess.thread_start()
 
-        self.sensor_states = {}
-        self.behavior = Behavior()
+        self.sensor_states = {
+                'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
+                'posture': [0, 0, 0, 0],
+                'camera': (0, 0, 0, 600, 0, False)
+            }
+        self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y))
     
     def main(self):
         self.log_system.write(f"Start R2Controller main")
         print(f"Start R2Controller main")
-        self.write_can_bus(CANList.ARM.value, self.behavior.base_action.arm(True))
-        self.write_can_bus(CANList.VACUUMFAN.value, self.behavior.base_action.vacuum_fan(False))
-        time.sleep(3)
         try:
             while True:
                 # raw_ctr_data: Dict = json.loads(self.read_udp()) # read from controller
 
+                
                 # 出力画像は受け取らない
-                _, id, output_data = self.MainProcess.q_frames_list[-1].get()
+                _, id, num, x, y, z, is_obtainable = self.MainProcess.q_results.get()
+                self.sensor_states['camera'] = (num, x, y, z, is_obtainable)
+                #self.sensor_states['camera'] = (0, 1, 0, 600, 0, False)   
                 
-                if id == 1:  #Lower Camera
-                    items, x, y, z, is_obtainable = output_data
-                else:
-                    items, x, y, z, is_obtainable = (-1, -1, -1, -1, False)                
-
+                #テスト用
                 '''
-                if items == 0 :
-                    Vx = 127
-                    Vy = 127
-
-                else:
-                    Vx = gain[0] * (x - FAN_X) + 127
-                    Vy = gain[1] * (y - FAN_Y) + 127
-                
-                self.write_can_bus(CANList.ROBOT_VEL.value, bytearray([int(Vx), int(Vy), 127]))
-
-                if is_obtainable:
-                    self.write_can_bus(CANList.VACUUMFAN.value, bytearray([1]))
-                    print("Obtainable!!")
-                else:
-                    self.write_can_bus(CANList.VACUUMFAN.value, bytearray([0]))     
-                 '''
-                #is_obtainable = False
-                #while is_obtainable == False:
-                v = [0, 0, 0]
-                gain = [3, 3, 0]
-                pos = (x-OBTAINABE_AREA_CENTER_X, y-OBTAINABE_AREA_CENTER_Y, 0)
-                for i in range(3):
-                    v[i] = gain[i] * pos[i]
-
-                if items == 0:
-                    v = [0, 0, 0]
-                print(f"id:{id}, items:{items}, v:{v}, is_obtainable:{is_obtainable}")
-                self.write_can_bus(CANList.ROBOT_VEL.value, self.behavior.base_action.move(v))
-                
-                if is_obtainable:
-                    self.write_can_bus(CANList.ARM.value, self.behavior.base_action.arm(False))
-                    self.write_can_bus(CANList.VACUUMFAN.value, self.behavior.base_action.vacuum_fan(True))
-                    time.sleep(1)
-                    self.write_can_bus(CANList.ARM.value, self.behavior.base_action.arm(True))
-                    break
-                
+                if not self.behavior.get_state == BehaviorList.ALIVE_BALL_OBTAINIG:
+                    self.behavior.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
                 '''
                 self.parse_from_can_message()
-                if bool(self.sensor_states):
-                    self.behavior.update_sensor_state(self.sensor_states) 
+                self.behavior.update_sensor_state(self.sensor_states) 
 
-                print('Action!!')
-                self.behavior.action()
+                commands = self.behavior.action()
 
-                self.sensor_states.clear()
+                for c in commands:
+                    self.write_can_bus(c[0], c[1])
+
                 self.lister.clear_received_data()
-
-                '''
 
 
         except KeyboardInterrupt:
@@ -326,8 +146,7 @@ class R2Controller(MainController):
                     "Left rear": not(bool(data.data[0] & 0x04))
                     }
 
-                self.sensor_states['wall_sensor'] = wall_detection_state    
-                
+                self.sensor_states['wall_sensor'] = wall_detection_state
 
     def parse_to_can_message(self, ctr_data: ClientData) -> None:
         # button a
