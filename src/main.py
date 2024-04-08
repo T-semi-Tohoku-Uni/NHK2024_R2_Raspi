@@ -113,7 +113,7 @@ class R2Controller(MainController):
                 if not self.behavior.get_state == BehaviorList.ALIVE_BALL_OBTAINIG:
                     self.behavior.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
                 '''
-                
+
                 self.parse_from_can_message()
                 self.lister.clear_received_data()
                 self.behavior.update_sensor_state(self.sensor_states)
@@ -122,13 +122,13 @@ class R2Controller(MainController):
 
                 for c in commands:
                     self.write_can_bus(c[0], c[1])
-
+                    
                 time.sleep(0.01)
 
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
-            self.MainProcess.finish()
+            self.MainProcess.finish()        
 
     def parse_from_can_message(self) -> None:
         received_datas = self.lister.get_received_datas()
