@@ -70,7 +70,7 @@ class CANMessageLister(can.Listener):
         
         self.write(f"Received: {msg.__str__()}")
         self.update_received_can_log(msg)
-        #print(f"Received: {msg.__str__()}")
+        print(f"Received: {msg.__str__()}")
 
 
 class R2Controller(MainController):
@@ -92,8 +92,8 @@ class R2Controller(MainController):
 
         self.sensor_states = {
                 'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
-                'posture': [0, 0, 0, 0],
-                'camera': (0, 0, 0, 600, 0, False)
+                'is_on_slope': False,
+                'ball_camera': (0, 0, 0, 600, 0, False)
             }
         self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y))
     
@@ -102,14 +102,11 @@ class R2Controller(MainController):
         print(f"Start R2Controller main")
         try:
             while True:
-                # raw_ctr_data: Dict = json.loads(self.read_udp()) # read from controller
-
-                
                 # 出力画像は受け取らない
                 frame, id, output_data = self.MainProcess.q_frames_list[-1].get()
                 if id == 1:
-                    self.sensor_states['camera'] = output_data
-                #self.sensor_states['camera'] = (0, 1, 0, 600, 0, False)   
+                    self.sensor_states['ball_camera'] = output_data
+                #self.sensor_states['camera'] = (0, 1, 0, 600, 0, False)
                 
                 #テスト用
                 '''
@@ -147,6 +144,9 @@ class R2Controller(MainController):
                     }
 
                 self.sensor_states['wall_sensor'] = wall_detection_state
+
+            if can_id == CANList.SLOPE_DETECTION:
+                self.sensor_states['is_on_slope'] = bool(data.data[0])
     
 if __name__ == "__main__":
     controller = R2Controller()

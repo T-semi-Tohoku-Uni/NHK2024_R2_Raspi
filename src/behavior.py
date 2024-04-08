@@ -77,6 +77,7 @@ class Behavior:
         self.posture_state: list[float] = [0, 0, 0, 0]
         self.sensor_state: Dict = {}
         self.camera_state: tuple = ()
+        self.is_on_slope = False
 
         self.center_obtainable_area = center_obtainable_area
 
@@ -84,6 +85,7 @@ class Behavior:
         self.position = [0, 0, 0]
 
         self.can_messages = []
+
 
         if enable_log:
             self.log_system = LogSystem()
@@ -102,7 +104,8 @@ class Behavior:
         self.sensor_state = state
         self.wall_sensor_state = state['wall_sensor']
         self.posture_state = state['posture']
-        self.camera_state = state['camera']
+        self.camera_state = state['ball_camera']
+        self.is_on_slope = state['is_on_slope']
 
     def get_state(self):
         return self.state
@@ -161,7 +164,7 @@ class Behavior:
             elif self.field == Field.RED:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
             if self.posture_state[0] < 0:
-                self.change_state(self.BehaviorList.ALIVE_SLOPE12)
+                self.change_state(BehaviorList.ALIVE_SLOPE12)
 
         #スロープのぼる
         elif self.state == BehaviorList.ALIVE_SLOPE12:
@@ -172,7 +175,7 @@ class Behavior:
 
             #坂から抜けだしたら次の状態へ
             if self.posture_state[0] > 0:
-                self.can_messages.append(self.change_state(self.BehaviorList.ALIVE_AREA2_OUTER_WALL))
+                self.change_state(BehaviorList.ALIVE_AREA2_OUTER_WALL)
 
         #エリア２のスロープから水ゾーンの壁への遷移
         elif self.state == BehaviorList.ALIVE_AREA2_OUTER_WALL:
@@ -266,7 +269,8 @@ if __name__ == '__main__':
         while True:
             sensor_state = {
                 'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
-                'posture': [0, 0, 0, 0]
+                'posture': [0, 0, 0, 0],
+                'ball_camera':(0, 1, 0, 600, 0, False)
             }
             behavior.update_sensor_state(sensor_state)
 
