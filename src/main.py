@@ -44,7 +44,7 @@ class CANMessageLister(can.Listener):
     def store_received_data(self, msg: can.Message):
         self.received_datas.append(msg)
     
-    def get_received_data(self):
+    def get_received_datas(self):
         return self.received_datas
 
     def clear_received_data(self):
@@ -131,7 +131,7 @@ class R2Controller(MainController):
 
     def parse_from_can_message(self) -> None:
         #print(self.lister.received_datas)
-        received_datas = self.lister.get_received_data()
+        received_datas = self.lister.get_received_datas()
         for data in received_datas:
             can_id: int = int(data.arbitration_id)
             if can_id == CANList.WALL_DETECTION.value:
