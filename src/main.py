@@ -113,16 +113,17 @@ class R2Controller(MainController):
                 if not self.behavior.get_state == BehaviorList.ALIVE_BALL_OBTAINIG:
                     self.behavior.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
                 '''
+                
                 self.parse_from_can_message()
-                self.behavior.update_sensor_state(self.sensor_states) 
-                #print(self.sensor_states)
+                self.lister.clear_received_data()
+                self.behavior.update_sensor_state(self.sensor_states)
 
                 commands = self.behavior.action()
 
                 for c in commands:
                     self.write_can_bus(c[0], c[1])
 
-                self.lister.clear_received_data()
+                time.sleep(0.01)
 
 
         except KeyboardInterrupt:
@@ -130,12 +131,10 @@ class R2Controller(MainController):
             self.MainProcess.finish()
 
     def parse_from_can_message(self) -> None:
-        #print(self.lister.received_datas)
         received_datas = self.lister.get_received_datas()
         for data in received_datas:
             can_id: int = int(data.arbitration_id)
             if can_id == CANList.WALL_DETECTION.value:
-                
                 wall_detection_state = {
                     "Front right": not(bool(data.data[0] & 0x20)), 
                     "Front left": not(bool(data.data[0] & 0x10)), 
@@ -147,9 +146,8 @@ class R2Controller(MainController):
 
                 self.sensor_states['wall_sensor'] = wall_detection_state
 
-            elif can_id == 0x203:
+            elif can_id == CANList.SLOPE_DETECTION.value:
                 self.sensor_states['is_on_slope'] = bool(data.data[0])
-                print(bool(data.data[0]))
     
 if __name__ == "__main__":
     controller = R2Controller()
