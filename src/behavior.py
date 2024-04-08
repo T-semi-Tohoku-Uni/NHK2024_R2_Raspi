@@ -103,7 +103,7 @@ class Behavior:
     def update_sensor_state(self, state: Dict):
         self.sensor_state = state
         self.wall_sensor_state = state['wall_sensor']
-        self.posture_state = state['posture']
+        #self.posture_state = state['posture']
         self.camera_state = state['ball_camera']
         self.is_on_slope = state['is_on_slope']
 
@@ -163,7 +163,7 @@ class Behavior:
                 self.can_messages.append(self.move_along_wall(Direction.RIGHT))
             elif self.field == Field.RED:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
-            if self.posture_state[0] < 0:
+            if self.is_on_slope:
                 self.change_state(BehaviorList.ALIVE_SLOPE12)
 
         #スロープのぼる
@@ -174,7 +174,7 @@ class Behavior:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
 
             #坂から抜けだしたら次の状態へ
-            if self.posture_state[0] > 0:
+            if not self.is_on_slope:
                 self.change_state(BehaviorList.ALIVE_AREA2_OUTER_WALL)
 
         #エリア２のスロープから水ゾーンの壁への遷移

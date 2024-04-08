@@ -67,7 +67,7 @@ class CANMessageLister(can.Listener):
             return
 
         self.store_received_data(msg)
-        
+
         self.write(f"Received: {msg.__str__()}")
         self.update_received_can_log(msg)
         print(f"Received: {msg.__str__()}")
@@ -103,9 +103,9 @@ class R2Controller(MainController):
         try:
             while True:
                 # 出力画像は受け取らない
-                frame, id, output_data = self.MainProcess.q_frames_list[-1].get()
-                if id == 1:
-                    self.sensor_states['ball_camera'] = output_data
+                #frame, id, output_data = self.MainProcess.q_frames_list[-1].get()
+                #if id == 1:
+                #    self.sensor_states['ball_camera'] = output_data
                 #self.sensor_states['camera'] = (0, 1, 0, 600, 0, False)
                 
                 #テスト用
@@ -115,6 +115,7 @@ class R2Controller(MainController):
                 '''
                 self.parse_from_can_message()
                 self.behavior.update_sensor_state(self.sensor_states) 
+                #print(self.sensor_states)
 
                 commands = self.behavior.action()
 
@@ -129,6 +130,7 @@ class R2Controller(MainController):
             self.MainProcess.finish()
 
     def parse_from_can_message(self) -> None:
+        #print(self.lister.received_datas)
         received_datas = self.lister.get_received_data()
         for data in received_datas:
             can_id: int = int(data.arbitration_id)
@@ -145,8 +147,9 @@ class R2Controller(MainController):
 
                 self.sensor_states['wall_sensor'] = wall_detection_state
 
-            if can_id == CANList.SLOPE_DETECTION:
+            elif can_id == 0x203:
                 self.sensor_states['is_on_slope'] = bool(data.data[0])
+                print(bool(data.data[0]))
     
 if __name__ == "__main__":
     controller = R2Controller()
