@@ -93,7 +93,7 @@ class R2Controller(MainController):
         self.sensor_states = {
                 'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
                 'is_on_slope': False,
-                'ball_camera': (0, 0, 0, 600, 0, False),
+                'ball_camera': (0, 0, 0, 600, False),
                 'robot_vel': [0, 0, 0],
                 'posture': 0
             }
@@ -108,7 +108,7 @@ class R2Controller(MainController):
                 #frame, id, output_data = self.MainProcess.q_frames_list[-1].get()
                 #if id == 1:
                 #    self.sensor_states['ball_camera'] = output_data
-                #self.sensor_states[', 600, 0, False)
+                self.sensor_states['ball_camera'] = (0, 0, 0, 600, False)
                 
                 #テスト用
                 '''

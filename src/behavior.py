@@ -246,10 +246,10 @@ class Behavior:
             radius = 2000
             sign = 1
             if self.field == Field.BLUE:
-                sign = 1
+                sign = -1
 
             if self.field == Field.RED:
-                sign = -1
+                sign = 1
             self.can_messages.append(self.base_action.move([0, self.max_speed, self.max_speed/radius]))
 
             if self.posture < -pi/2:
