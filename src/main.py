@@ -70,7 +70,7 @@ class CANMessageLister(can.Listener):
 
         self.write(f"Received: {msg.__str__()}")
         self.update_received_can_log(msg)
-        print(f"Received: {msg.__str__()}")
+        #print(f"Received: {msg.__str__()}")
 
 
 class R2Controller(MainController):
@@ -93,7 +93,9 @@ class R2Controller(MainController):
         self.sensor_states = {
                 'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
                 'is_on_slope': False,
-                'ball_camera': (0, 0, 0, 600, 0, False)
+                'ball_camera': (0, 0, 0, 600, 0, False),
+                'robot_vel': [0, 0, 0],
+                'posture': 0
             }
         self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y))
     
@@ -106,7 +108,7 @@ class R2Controller(MainController):
                 #frame, id, output_data = self.MainProcess.q_frames_list[-1].get()
                 #if id == 1:
                 #    self.sensor_states['ball_camera'] = output_data
-                #self.sensor_states['camera'] = (0, 1, 0, 600, 0, False)
+                #self.sensor_states[', 600, 0, False)
                 
                 #テスト用
                 '''
@@ -117,18 +119,20 @@ class R2Controller(MainController):
                 self.parse_from_can_message()
                 self.lister.clear_received_data()
                 self.behavior.update_sensor_state(self.sensor_states)
+                
 
                 commands = self.behavior.action()
-
+                
                 for c in commands:
                     self.write_can_bus(c[0], c[1])
-                    
+
                 time.sleep(0.01)
 
-
+        
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
-            self.MainProcess.finish()        
+            self.MainProcess.finish()
+            self.behavior.shutdown()    
 
     def parse_from_can_message(self) -> None:
         received_datas = self.lister.get_received_datas()
@@ -148,6 +152,11 @@ class R2Controller(MainController):
 
             elif can_id == CANList.SLOPE_DETECTION.value:
                 self.sensor_states['is_on_slope'] = bool(data.data[0])
+
+            elif can_id == CANList.ROBOT_VEL_FB.value:
+                self.sensor_states['robot_vel'] = [(data.data[0] - 127) * 16, (data.data[1] - 127) * 16, (data.data[2] - 127) * 0.02]
+                self.sensor_states['posture'] = (data.data[3] - 127) / 40
+                # print('posture:', self.sensor_states['posture'])
     
 if __name__ == "__main__":
     controller = R2Controller()

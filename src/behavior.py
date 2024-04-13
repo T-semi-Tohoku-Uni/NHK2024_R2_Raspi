@@ -203,7 +203,7 @@ class Behavior:
                 sign = -1
             v = [0, self.max_speed, sign * self.max_speed / radius]
 
-            print(self.posture)
+            #print(self.posture)
             #機体が横向きになったら次の状態へ
             if self.posture > pi/2:
                 self.change_state(BehaviorList.ALIVE_AREA2_WATER_WALL)
@@ -218,32 +218,30 @@ class Behavior:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
 
             #右前のセンサが反応しなくなったら
-            if not self.wall_sensor_state[1]:
+            if not self.wall_sensor_state['Front right']:
                 self.can_messages.clear()
                 #右後ろのセンサが反応しなくなるまでゆっくり進む
-                if self.wall_sensor_state[0]:
+                if self.wall_sensor_state['Right rear']:
                     self.can_messages.append(self.base_action.move([0, 300, 0]))
 
-                elif not self.wall_sensor_state[0]:
+                elif not self.wall_sensor_state['Right rear']:
                     self.change_state(BehaviorList.ALIVE_APPROACH_SLOPE23)
 
         #スロープに近づく
         elif self.state == BehaviorList.ALIVE_APPROACH_SLOPE23:
             self.can_messages.append(self.base_action.move([0, 300, 0]))
 
-
-            #右後ろのセンサが反応しなくなったら
-            if not self.wall_sensor_state[0]:
-                #ちょっと進んでから右折
-                self.change_state(BehaviorList.ALIVE_SLOPE23)
+            #ちょっと進んでから右折
+            self.change_state(BehaviorList.ALIVE_SLOPE23)
         
         elif self.state == BehaviorList.ALIVE_SLOPE23:
-            self.can_messages.append(self.base_action.move(0, self.max_speed, 0))
+            self.can_messages.append(self.base_action.move([0, self.max_speed, 0]))
 
             #スロープ検出した後，平面検出するまで進む
             if not self.is_on_slope:
                 self.change_state(BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT)
         
+        #半径2000の円を描きながら適当に真ん中あたりに行く
         elif self.state == BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT:
             radius = 2000
             sign = 1
@@ -252,7 +250,17 @@ class Behavior:
 
             if self.field == Field.RED:
                 sign = -1
-            self.can_messages.append(self.base_action.move(0, self.max_speed, self.max_speed/radius))
+            self.can_messages.append(self.base_action.move([0, self.max_speed, self.max_speed/radius]))
+
+            if self.posture < -pi/2:
+                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_WIDE)
+            
+        elif self.state == BehaviorList.ALIVE_BALL_SEARCH_WIDE:
+            self.can_messages.append(self.base_action.move([0, 0, 0.3]))
+            num, x, y, z, is_obtainable = self.ball_state
+
+            if num > 0:
+                self.self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
 
         elif self.state == BehaviorList.ALIVE_BALL_OBTAINIG:
             num, x, y, z, is_obtainable = self.ball_state
@@ -269,7 +277,7 @@ class Behavior:
                 self.can_messages.append(self.base_action.move(v))
             
             elif num == 0:
-                self.can_messages.append(self.base_action.move((0, 0, 0.3)))
+                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_WIDE)
 
             if is_obtainable:
                 self.can_messages.append(self.base_action.arm.down())
@@ -277,6 +285,7 @@ class Behavior:
                 self.change_state(BehaviorList.ALIVE_MOVE_TO_SILO)
             
         elif self.state == BehaviorList.ALIVE_MOVE_TO_SILO:
+            self.can_messages.append(self.base_action.move([0, 0, 0]))
             pass
         
         elif self.state == BehaviorList.FINISH:
