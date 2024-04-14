@@ -122,6 +122,14 @@ class Behavior:
     def get_state(self):
         return self.state
 
+    def follow_object(self, object_pos_error):
+        gain = [2, 2, 0]
+        v = [0, 0, 0]
+        for i in range(3):
+            v[i] = gain[i] * object_pos_error[i]
+        return self.base_action.move(v)
+
+
     def move_along_wall(self, direction: Direction, move_direction: bool = True):
         if direction not in Direction:
             print("Invalid direction")
@@ -271,21 +279,13 @@ class Behavior:
             num, x, y, z, is_obtainable = self.ball_state
 
             if num > 0:
-                self.self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
+                self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
 
         elif self.state == BehaviorList.ALIVE_BALL_OBTAINIG:
             num, x, y, z, is_obtainable = self.ball_state
             if num > 0:
-                v = [0, 0, 0]
-                gain = 2, 2, 0
-                pos = x - self.center_obtainable_area[0], y - self.center_obtainable_area[1], z
-
-                # print(pos)
-
-                for i in range(3):
-                    v[i] = gain[i] * pos[i]
-
-                self.can_messages.append(self.base_action.move(v))
+                pos = [x - self.center_obtainable_area[0], y - self.center_obtainable_area[1], z]
+                self.can_messages.append(self.follow_object(pos))
             
             elif num == 0:
                 self.change_state(BehaviorList.ALIVE_BALL_SEARCH_WIDE)
