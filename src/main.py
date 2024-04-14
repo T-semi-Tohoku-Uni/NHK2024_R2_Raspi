@@ -76,12 +76,15 @@ class CANMessageLister(can.Listener):
 class R2Controller(MainController):
     def __init__(self):
         super().__init__("tsemiR2", 11111, is_udp=False)
+        self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y))
         
         # init can message lister
         self.lister = CANMessageLister()
         self.lister.init_write_fnc(self.log_system.write, self.log_system.update_received_can_log, self.log_system.update_send_can_log, self.log_system.update_error_log)
         self.lister.init_write_can_bus_func(self.write_can_bus)
         self.init_can_notifier(lister=self.lister)
+
+        self.behavior.init_log_system(self.log_system)
 
         UpperCam = UpperCamera(0)
         LowerCam = LowerCamera(2)
@@ -97,7 +100,6 @@ class R2Controller(MainController):
                 'robot_vel': [0, 0, 0],
                 'posture': 0
             }
-        self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y))
     
     def main(self):
         self.log_system.write(f"Start R2Controller main")

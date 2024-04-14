@@ -98,12 +98,10 @@ class Behavior:
         self.position = [0, 0, 0]
 
         self.can_messages = []
+        self.log_system = None
 
-
-        if enable_log:
-            self.log_system = LogSystem()
-        else:
-            self.log_system = None
+    def init_log_system(self, log_system):
+        self.log_system = log_system
 
     def change_state(self, state: BehaviorList):
         print('Change state from {} to {}'.format(self.state, state))
