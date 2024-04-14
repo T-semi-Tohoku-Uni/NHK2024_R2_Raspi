@@ -64,11 +64,19 @@ class BehaviorList(Enum):
 
 
 class Behavior:
-    def __init__(self, field: Field, center_obtainable_area, enable_log=True):
+    def __init__(self, field: Field, 
+                 center_obtainable_area, 
+                 enable_log=True, 
+                 start_state: BehaviorList = BehaviorList.INITIALIZING, 
+                 finish_state: BehaviorList = BehaviorList.FINISH
+                 ):
+        
         self.base_action = BaseAction()
 
-        self.state = BehaviorList.INITIALIZING
+        self.state = start_state
         self.field = field
+        self.finish_state = finish_state
+
 
         self.wall_sensor_state: Dict = {
             "Right rear": False,
@@ -122,18 +130,19 @@ class Behavior:
             return False
         max_speed = 500
         approach_speed = 400
+        virtual_thrust_speed = 30
         align_angle_speed = 1
 
         if direction == Direction.RIGHT:
             
             if self.wall_sensor_state['Right front'] == False and self.wall_sensor_state['Right rear'] == False:
-                return self.base_action.move([approach_speed, max_speed, 0])
+                return self.base_action.move([virtual_thrust_speed, max_speed, 0])
             elif self.wall_sensor_state['Right front'] == False and self.wall_sensor_state['Right rear'] == True:
-                return self.base_action.move([approach_speed * 0.1, max_speed, -1 * align_angle_speed])
+                return self.base_action.move([virtual_thrust_speed, max_speed, -1 * align_angle_speed])
             elif self.wall_sensor_state['Right front'] == True and self.wall_sensor_state['Right rear'] == False:
-                return self.base_action.move([approach_speed * 0.1, max_speed, align_angle_speed])
+                return self.base_action.move([virtual_thrust_speed, max_speed, align_angle_speed])
             elif self.wall_sensor_state['Right front'] == True and self.wall_sensor_state['Right rear'] == True:
-                return self.base_action.move([approach_speed * 0.1, max_speed, 0])
+                return self.base_action.move([virtual_thrust_speed, max_speed, 0])
             else:
                 print("Invalid wall sensor state")
                 return False
@@ -151,11 +160,15 @@ class Behavior:
         self.can_messages.append(self.base_action.fan.off())
         self.can_messages.append(self.base_action.arm.up())
         self.can_messages.append(self.base_action.move([0, 0, 0]))
+        exit()
 
     def calculate_position(self):
         pass
 
     def action(self):
+        if self.state == self.finish_state:
+            self.state = BehaviorList.FINISH
+
         self.can_messages.clear()
         if self.state == BehaviorList.INITIALIZING:
             self.can_messages.append(self.base_action.fan.off())
@@ -286,6 +299,12 @@ class Behavior:
             
         elif self.state == BehaviorList.ALIVE_MOVE_TO_SILO:
             self.can_messages.append(self.base_action.move([0, 0, 0]))
+            pass
+
+        elif self.state == BehaviorList.ALIVE_CHOOSE_SILO:
+            pass
+
+        elif self.state == BehaviorList.ALIVE_PUTIN:
             pass
         
         elif self.state == BehaviorList.FINISH:
