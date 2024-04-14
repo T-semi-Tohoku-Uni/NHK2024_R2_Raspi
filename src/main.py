@@ -44,7 +44,7 @@ class CANMessageLister(can.Listener):
     def store_received_data(self, msg: can.Message):
         self.received_datas.append(msg)
     
-    def get_received_data(self):
+    def get_received_datas(self):
         return self.received_datas
 
     def clear_received_data(self):
@@ -67,7 +67,7 @@ class CANMessageLister(can.Listener):
             return
 
         self.store_received_data(msg)
-        
+
         self.write(f"Received: {msg.__str__()}")
         self.update_received_can_log(msg)
         #print(f"Received: {msg.__str__()}")
@@ -92,8 +92,10 @@ class R2Controller(MainController):
 
         self.sensor_states = {
                 'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
-                'posture': [0, 0, 0, 0],
-                'camera': (0, 0, 0, 600, 0, False)
+                'is_on_slope': False,
+                'ball_camera': (0, 0, 0, 600, False),
+                'robot_vel': [0, 0, 0],
+                'posture': 0
             }
         self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y))
     
@@ -102,41 +104,41 @@ class R2Controller(MainController):
         print(f"Start R2Controller main")
         try:
             while True:
-                # raw_ctr_data: Dict = json.loads(self.read_udp()) # read from controller
-
-                
                 # 出力画像は受け取らない
-                frame, id, output_data = self.MainProcess.q_frames_list[-1].get()
-                if id == 1:
-                    self.sensor_states['camera'] = output_data
-                #self.sensor_states['camera'] = (0, 1, 0, 600, 0, False)   
+                #frame, id, output_data = self.MainProcess.q_frames_list[-1].get()
+                #if id == 1:
+                #    self.sensor_states['ball_camera'] = output_data
+                self.sensor_states['ball_camera'] = (0, 0, 0, 600, False)
                 
                 #テスト用
                 '''
                 if not self.behavior.get_state == BehaviorList.ALIVE_BALL_OBTAINIG:
                     self.behavior.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
                 '''
+
                 self.parse_from_can_message()
-                self.behavior.update_sensor_state(self.sensor_states) 
+                self.lister.clear_received_data()
+                self.behavior.update_sensor_state(self.sensor_states)
+                
 
                 commands = self.behavior.action()
-
+                
                 for c in commands:
                     self.write_can_bus(c[0], c[1])
 
-                self.lister.clear_received_data()
+                time.sleep(0.01)
 
-
+        
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
             self.MainProcess.finish()
+            self.behavior.shutdown()    
 
     def parse_from_can_message(self) -> None:
-        received_datas = self.lister.get_received_data()
+        received_datas = self.lister.get_received_datas()
         for data in received_datas:
             can_id: int = int(data.arbitration_id)
             if can_id == CANList.WALL_DETECTION.value:
-                
                 wall_detection_state = {
                     "Front right": not(bool(data.data[0] & 0x20)), 
                     "Front left": not(bool(data.data[0] & 0x10)), 
@@ -147,6 +149,14 @@ class R2Controller(MainController):
                     }
 
                 self.sensor_states['wall_sensor'] = wall_detection_state
+
+            elif can_id == CANList.SLOPE_DETECTION.value:
+                self.sensor_states['is_on_slope'] = bool(data.data[0])
+
+            elif can_id == CANList.ROBOT_VEL_FB.value:
+                self.sensor_states['robot_vel'] = [(data.data[0] - 127) * 16, (data.data[1] - 127) * 16, (data.data[2] - 127) * 0.02]
+                self.sensor_states['posture'] = (data.data[3] - 127) / 40
+                # print('posture:', self.sensor_states['posture'])
     
 if __name__ == "__main__":
     controller = R2Controller()

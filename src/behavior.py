@@ -6,6 +6,7 @@ from typing import Dict, List
 import hardware_module
 from hardware_module import CANList
 from NHK2024_Raspi_Library import LogSystem
+from math import pi
 
 # 基本的な動作を表すクラス
 class BaseAction:
@@ -42,21 +43,24 @@ class Field(Enum):
 
 class BehaviorList(Enum):
     INITIALIZING = 0
-    INITIALIZED = 4
-    START_READY = 8
-    ALIVE_AREA1 = 12
-    ALIVE_SLOPE12 = 16
-    ALIVE_AREA2_OUTER_WALL = 20
-    ALIVE_AREA2_WATER_WALL = 24
-    ALIVE_APPROACH_SLOPE23 = 27
-    ALIVE_SLOPE23 = 28
-    ALIVE_AREA3_FIRST_ATTEMPT = 32
-    ALIVE_BALL_SEARCH_WIDE = 36
-    ALIVE_BALL_SEARCH_NARROW = 40
-    ALIVE_BALL_OBTAINIG = 44
-    ALIVE_MOVE_TO_SILO = 48
-    ALIVE_CHOOSE_SILO = 52
-    ALIVE_PUTIN = 56
+    INITIALIZED = 10
+    START_READY = 20
+    ALIVE_AREA1 = 30
+    ALIVE_SLOPE12 = 40
+    ALIVE_AREA2_OUTER_WALL = 50
+    ALIVE_AREA2_WATER_WALL = 60
+    ALIVE_APPROACH_SLOPE23 = 70
+    ALIVE_SLOPE23 = 80
+    ALIVE_AREA3_FIRST_ATTEMPT = 90
+    ALIVE_BALL_SEARCH_WIDE = 100
+    ALIVE_BALL_SEARCH_NARROW = 110
+    ALIVE_BALL_OBTAINIG = 120
+    ALIVE_FIND_SILOLINE = 130
+    ALIVE_FOLLOW_SILOLINE = 140
+    ALIVE_MOVE_TO_SILO = 150
+    ALIVE_CHOOSE_SILO = 160
+    ALIVE_PUTIN = 170
+    FINISH = 1000
 
 
 class Behavior:
@@ -74,9 +78,11 @@ class Behavior:
             "Left front": False,
             "Left rear": False
         }
-        self.posture_state: list[float] = [0, 0, 0, 0]
         self.sensor_state: Dict = {}
         self.camera_state: tuple = ()
+        self.is_on_slope = False
+        self.posture = 0
+        self.robot_vel = [0, 0, 0]
 
         self.center_obtainable_area = center_obtainable_area
 
@@ -84,6 +90,7 @@ class Behavior:
         self.position = [0, 0, 0]
 
         self.can_messages = []
+
 
         if enable_log:
             self.log_system = LogSystem()
@@ -101,8 +108,10 @@ class Behavior:
     def update_sensor_state(self, state: Dict):
         self.sensor_state = state
         self.wall_sensor_state = state['wall_sensor']
-        self.posture_state = state['posture']
-        self.camera_state = state['camera']
+        self.ball_state = state['ball_camera']
+        self.is_on_slope = state['is_on_slope']
+        self.robot_vel = state['robot_vel']
+        self.posture = state['posture']
 
     def get_state(self):
         return self.state
@@ -135,6 +144,14 @@ class Behavior:
         elif direction == Direction.BACK:
             pass
 
+    def shutdown(self):
+        self.log_system.write('Call shutdown function')
+        print('Call shutdown function')
+        self.change_state(BehaviorList.FINISH)
+        self.can_messages.append(self.base_action.fan.off())
+        self.can_messages.append(self.base_action.arm.up())
+        self.can_messages.append(self.base_action.move([0, 0, 0]))
+
     def calculate_position(self):
         pass
 
@@ -160,21 +177,22 @@ class Behavior:
                 self.can_messages.append(self.move_along_wall(Direction.RIGHT))
             elif self.field == Field.RED:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
-            if self.posture_state[0] < 0:
-                self.change_state(self.BehaviorList.ALIVE_SLOPE12)
+            if self.is_on_slope:
+                self.change_state(BehaviorList.ALIVE_SLOPE12)
 
         #スロープのぼる
         elif self.state == BehaviorList.ALIVE_SLOPE12:
             if self.field == Field.BLUE:
-                self.can_messages.append(self.move_along_wall(Direction.RIGHT))
+                self.can_messages.append(self.base_action.move([-30, self.max_speed, 0]))
             elif self.field == Field.RED:
-                self.can_messages.append(self.move_along_wall(Direction.LEFT))
+                self.can_messages.append(self.base_action.move([30, self.max_speed, 0]))
 
             #坂から抜けだしたら次の状態へ
-            if self.posture_state[0] > 0:
-                self.can_messages.append(self.change_state(self.BehaviorList.ALIVE_AREA2_OUTER_WALL))
+            if not self.is_on_slope:
+                self.change_state(BehaviorList.ALIVE_AREA2_OUTER_WALL)
 
         #エリア２のスロープから水ゾーンの壁への遷移
+        #半径2500mmの円を描いて方向転換
         elif self.state == BehaviorList.ALIVE_AREA2_OUTER_WALL:
             radius = 2500
             center = 2500
@@ -185,8 +203,9 @@ class Behavior:
                 sign = -1
             v = [0, self.max_speed, sign * self.max_speed / radius]
 
+            #print(self.posture)
             #機体が横向きになったら次の状態へ
-            if self.posture_state[0] > center:
+            if self.posture > pi/2:
                 self.change_state(BehaviorList.ALIVE_AREA2_WATER_WALL)
 
             self.can_messages.append(self.base_action.move(v))
@@ -199,50 +218,58 @@ class Behavior:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
 
             #右前のセンサが反応しなくなったら
-            if not self.wall_sensor_state[1]:
+            if not self.wall_sensor_state['Front right']:
                 self.can_messages.clear()
                 #右後ろのセンサが反応しなくなるまでゆっくり進む
-                if self.wall_sensor_state[0]:
+                if self.wall_sensor_state['Right rear']:
                     self.can_messages.append(self.base_action.move([0, 300, 0]))
 
-                elif not self.wall_sensor_state[0]:
+                elif not self.wall_sensor_state['Right rear']:
                     self.change_state(BehaviorList.ALIVE_APPROACH_SLOPE23)
 
         #スロープに近づく
         elif self.state == BehaviorList.ALIVE_APPROACH_SLOPE23:
             self.can_messages.append(self.base_action.move([0, 300, 0]))
 
-
-            #右後ろのセンサが反応しなくなったら
-            if not self.wall_sensor_state[0]:
-                #ちょっと進んでから右折
-                self.change_state(BehaviorList.ALIVE_SLOPE23)
+            #ちょっと進んでから右折
+            self.change_state(BehaviorList.ALIVE_SLOPE23)
         
         elif self.state == BehaviorList.ALIVE_SLOPE23:
-            self.can_messages.append(self.base_action.move(0, self.max_speed, 0))
+            self.can_messages.append(self.base_action.move([0, self.max_speed, 0]))
 
             #スロープ検出した後，平面検出するまで進む
-            if self.posture_state[0] > 0:
+            if not self.is_on_slope:
                 self.change_state(BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT)
         
+        #半径2000の円を描きながら適当に真ん中あたりに行く
         elif self.state == BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT:
             radius = 2000
             sign = 1
             if self.field == Field.BLUE:
-                sign = 1
+                sign = -1
 
             if self.field == Field.RED:
-                sign = -1
-            self.can_messages.append(self.base_action.move(0, self.max_speed, self.max_speed/radius))
+                sign = 1
+            self.can_messages.append(self.base_action.move([0, self.max_speed, self.max_speed/radius]))
+
+            if self.posture < -pi/2:
+                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_WIDE)
+            
+        elif self.state == BehaviorList.ALIVE_BALL_SEARCH_WIDE:
+            self.can_messages.append(self.base_action.move([0, 0, 0.3]))
+            num, x, y, z, is_obtainable = self.ball_state
+
+            if num > 0:
+                self.self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
 
         elif self.state == BehaviorList.ALIVE_BALL_OBTAINIG:
-            num, x, y, z, is_obtainable = self.camera_state
+            num, x, y, z, is_obtainable = self.ball_state
             if num > 0:
                 v = [0, 0, 0]
                 gain = 2, 2, 0
                 pos = x - self.center_obtainable_area[0], y - self.center_obtainable_area[1], z
 
-                print(pos)
+                # print(pos)
 
                 for i in range(3):
                     v[i] = gain[i] * pos[i]
@@ -250,12 +277,19 @@ class Behavior:
                 self.can_messages.append(self.base_action.move(v))
             
             elif num == 0:
-                self.can_messages.append(self.base_action.move((0, 0, 0.3)))
+                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_WIDE)
 
             if is_obtainable:
                 self.can_messages.append(self.base_action.arm.down())
                 self.can_messages.append(self.base_action.fan.on())
                 self.change_state(BehaviorList.ALIVE_MOVE_TO_SILO)
+            
+        elif self.state == BehaviorList.ALIVE_MOVE_TO_SILO:
+            self.can_messages.append(self.base_action.move([0, 0, 0]))
+            pass
+        
+        elif self.state == BehaviorList.FINISH:
+            self.shutdown()
                 
         return self.can_messages
 
@@ -266,7 +300,8 @@ if __name__ == '__main__':
         while True:
             sensor_state = {
                 'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
-                'posture': [0, 0, 0, 0]
+                'posture': [0, 0, 0, 0],
+                'ball_camera':(0, 1, 0, 600, 0, False)
             }
             behavior.update_sensor_state(sensor_state)
 
