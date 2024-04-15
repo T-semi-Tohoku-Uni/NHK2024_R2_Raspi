@@ -76,7 +76,7 @@ class CANMessageLister(can.Listener):
 class R2Controller(MainController):
     def __init__(self):
         super().__init__("tsemiR2", 11111, is_udp=False)
-        self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y))
+        self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), finish_state=BehaviorList.ALIVE_SLOPE23)
         
         # init can message lister
         self.lister = CANMessageLister()
@@ -86,12 +86,12 @@ class R2Controller(MainController):
 
         self.behavior.init_log_system(self.log_system)
 
-        UpperCam = UpperCamera(0)
-        LowerCam = LowerCamera(2)
-        RearCam = LowerCamera(2)
+        # UpperCam = UpperCamera(0)
+        # LowerCam = LowerCamera(2)
+        # RearCam = LowerCamera(2)
         
-        self.MainProcess = MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt',UpperCam,LowerCam,RearCam)
-        self.MainProcess.thread_start()
+        # self.MainProcess = MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt',UpperCam,LowerCam,RearCam)
+        # self.MainProcess.thread_start()
 
         self.sensor_states = {
                 'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
