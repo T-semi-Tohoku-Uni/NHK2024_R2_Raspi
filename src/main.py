@@ -76,7 +76,10 @@ class CANMessageLister(can.Listener):
 class R2Controller(MainController):
     def __init__(self):
         super().__init__("tsemiR2", 11111, is_udp=False)
-        self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), finish_state=BehaviorList.ALIVE_SLOPE23)
+        self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
+                                 start_state=BehaviorList.ALIVE_AREA2_WATER_WALL,
+                                 finish_state=BehaviorList.ALIVE_SLOPE23
+                                 )
         
         # init can message lister
         self.lister = CANMessageLister()
@@ -110,13 +113,6 @@ class R2Controller(MainController):
                 #frame, id, output_data = self.MainProcess.q_frames_list[-1].get()
                 #if id == 1:
                 #    self.sensor_states['ball_camera'] = output_data
-                self.sensor_states['ball_camera'] = (0, 0, 0, 600, False)
-                
-                #テスト用
-                '''
-                if not self.behavior.get_state == BehaviorList.ALIVE_BALL_OBTAINIG:
-                    self.behavior.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
-                '''
 
                 self.parse_from_can_message()
                 self.lister.clear_received_data()

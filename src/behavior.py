@@ -49,6 +49,7 @@ class BehaviorList(Enum):
     ALIVE_SLOPE12 = 40
     ALIVE_AREA2_OUTER_WALL = 50
     ALIVE_AREA2_WATER_WALL = 60
+    ALIVE_AREA2_ON_WATER_WALL = 62
     ALIVE_APPROACH_SLOPE23 = 70
     ALIVE_SLOPE23 = 80
     ALIVE_AREA3_FIRST_ATTEMPT = 90
@@ -73,8 +74,9 @@ class Behavior:
         
         self.base_action = BaseAction()
 
-        self.state = start_state
+        
         self.field = field
+        self.state = start_state
         self.finish_state = finish_state
 
 
@@ -94,7 +96,7 @@ class Behavior:
 
         self.center_obtainable_area = center_obtainable_area
 
-        self.max_speed = 1000
+        self.max_speed = 300
         self.position = [0, 0, 0]
 
         self.can_messages = []
@@ -126,21 +128,20 @@ class Behavior:
         if direction not in Direction:
             print("Invalid direction")
             return False
-        max_speed = 500
-        approach_speed = 400
-        virtual_thrust_speed = 30
-        align_angle_speed = 1
+        approach_speed = self.max_speed / 3
+        virtual_thrust_speed = 100
+        align_angle_speed = 0.1
 
         if direction == Direction.RIGHT:
             
             if self.wall_sensor_state['Right front'] == False and self.wall_sensor_state['Right rear'] == False:
-                return self.base_action.move([virtual_thrust_speed, max_speed, 0])
+                return self.base_action.move([approach_speed, self.max_speed, 0])
             elif self.wall_sensor_state['Right front'] == False and self.wall_sensor_state['Right rear'] == True:
-                return self.base_action.move([virtual_thrust_speed, max_speed, -1 * align_angle_speed])
+                return self.base_action.move([virtual_thrust_speed, self.max_speed, -1 * align_angle_speed])
             elif self.wall_sensor_state['Right front'] == True and self.wall_sensor_state['Right rear'] == False:
-                return self.base_action.move([virtual_thrust_speed, max_speed, align_angle_speed])
+                return self.base_action.move([virtual_thrust_speed, self.max_speed, align_angle_speed])
             elif self.wall_sensor_state['Right front'] == True and self.wall_sensor_state['Right rear'] == True:
-                return self.base_action.move([virtual_thrust_speed, max_speed, 0])
+                return self.base_action.move([virtual_thrust_speed, self.max_speed, 0])
             else:
                 print("Invalid wall sensor state")
                 return False
@@ -228,15 +229,18 @@ class Behavior:
             elif self.field == Field.RED:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
 
-            #右前のセンサが反応しなくなったら
-            if not self.wall_sensor_state['Front right']:
-                self.can_messages.clear()
-                #右後ろのセンサが反応しなくなるまでゆっくり進む
-                if self.wall_sensor_state['Right rear']:
-                    self.can_messages.append(self.base_action.move([0, 300, 0]))
+            if self.wall_sensor_state['Right front']and self.wall_sensor_state['Right rear'] == True:
+                time.sleep(0.2)
+                self.change_state(BehaviorList.ALIVE_AREA2_ON_WATER_WALL)
 
-                elif not self.wall_sensor_state['Right rear']:
-                    self.change_state(BehaviorList.ALIVE_APPROACH_SLOPE23)
+        elif self.state == BehaviorList.ALIVE_AREA2_ON_WATER_WALL:
+            if self.field == Field.BLUE:
+                self.can_messages.append(self.move_along_wall(Direction.RIGHT))
+            elif self.field == Field.RED:
+                self.can_messages.append(self.move_along_wall(Direction.LEFT))
+
+            if not self.wall_sensor_state['Right front']:
+                self.change_state(BehaviorList.ALIVE_APPROACH_SLOPE23)
 
         #スロープに近づく
         elif self.state == BehaviorList.ALIVE_APPROACH_SLOPE23:
