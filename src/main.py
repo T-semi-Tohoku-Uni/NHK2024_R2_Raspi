@@ -77,8 +77,8 @@ class R2Controller(MainController):
     def __init__(self):
         super().__init__("tsemiR2", 11111, is_udp=False)
         self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
-                                 start_state=BehaviorList.ALIVE_AREA2_WATER_WALL,
-                                 finish_state=BehaviorList.ALIVE_SLOPE23
+                                 start_state=BehaviorList.INITIALIZING,
+                                 finish_state=BehaviorList.ALIVE_BALL_SEARCH_WIDE
                                  )
         
         # init can message lister
