@@ -10,6 +10,7 @@ class CANList(Enum):
     ARM = 0x101
     ROBOT_VEL = 0x106
 
+    SLOPE_DETECTION = 0x203
     ROBOT_VEL_FB = 0x205
     WALL_DETECTION = 0x204
     LATERAL_SHIFT = 0x206
