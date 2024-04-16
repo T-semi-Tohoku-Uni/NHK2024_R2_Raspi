@@ -50,6 +50,7 @@ class BehaviorList(Enum):
     ALIVE_AREA2_OUTER_WALL = 50
     ALIVE_AREA2_WATER_WALL = 60
     ALIVE_AREA2_ON_WATER_WALL = 62
+    ALIVE_APPROACH_SLOPE23_ROTATE = 68
     ALIVE_APPROACH_SLOPE23 = 70
     ALIVE_SLOPE23 = 80
     ALIVE_AREA3_FIRST_ATTEMPT = 90
@@ -124,11 +125,11 @@ class Behavior:
     def get_state(self):
         return self.state
 
-    def move_along_wall(self, direction: Direction, move_direction: bool = True):
+    def move_along_wall(self, direction: Direction, approach_speed = 400, move_direction: bool = True):
         if direction not in Direction:
             print("Invalid direction")
             return False
-        approach_speed = self.max_speed / 3
+        
         virtual_thrust_speed = 100
         align_angle_speed = 0.1
 
@@ -207,7 +208,6 @@ class Behavior:
         #半径2500mmの円を描いて方向転換
         elif self.state == BehaviorList.ALIVE_AREA2_OUTER_WALL:
             radius = 2500
-            center = 2500
             sign = 1
             if self.field == Field.BLUE:
                 sign = 1
@@ -224,30 +224,50 @@ class Behavior:
 
         #水ゾーンの壁に伝って進む
         elif self.state == BehaviorList.ALIVE_AREA2_WATER_WALL:
+            self.max_speed = 0
             if self.field == Field.BLUE:
-                self.can_messages.append(self.move_along_wall(Direction.RIGHT))
+                self.can_messages.append(self.move_along_wall(Direction.RIGHT, approach_speed=300))
             elif self.field == Field.RED:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
 
             if self.wall_sensor_state['Right front']and self.wall_sensor_state['Right rear'] == True:
-                time.sleep(0.2)
+                time.sleep(0.35)
                 self.change_state(BehaviorList.ALIVE_AREA2_ON_WATER_WALL)
 
         elif self.state == BehaviorList.ALIVE_AREA2_ON_WATER_WALL:
+            self.max_speed = 500
             if self.field == Field.BLUE:
                 self.can_messages.append(self.move_along_wall(Direction.RIGHT))
             elif self.field == Field.RED:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
 
             if not self.wall_sensor_state['Right front']:
+                self.change_state(BehaviorList.ALIVE_APPROACH_SLOPE23_ROTATE)
+
+        elif self.state == BehaviorList.ALIVE_APPROACH_SLOPE23_ROTATE:
+            self.max_speed = 300
+            radius = 300
+            sign = -1
+            if self.field == Field.BLUE:
+                sign = -1
+            elif self.field == Field.RED:
+                sign = 1
+            v = [0, self.max_speed, sign * self.max_speed / radius]
+
+            #print(self.posture)
+            #機体が横向きになったら次の状態へ
+            if self.posture < 0:
                 self.change_state(BehaviorList.ALIVE_APPROACH_SLOPE23)
+
+            self.can_messages.append(self.base_action.move(v))
 
         #スロープに近づく
         elif self.state == BehaviorList.ALIVE_APPROACH_SLOPE23:
             self.can_messages.append(self.base_action.move([0, 300, 0]))
 
-            #ちょっと進んでから右折
-            self.change_state(BehaviorList.ALIVE_SLOPE23)
+            # 坂検出
+            if self.is_on_slope:
+                self.change_state(BehaviorList.ALIVE_SLOPE23)
         
         elif self.state == BehaviorList.ALIVE_SLOPE23:
             self.can_messages.append(self.base_action.move([0, self.max_speed, 0]))
@@ -258,14 +278,15 @@ class Behavior:
         
         #半径2000の円を描きながら適当に真ん中あたりに行く
         elif self.state == BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT:
-            radius = 2000
-            sign = 1
+            radius = 1800
+            self.max_speed = 500
+            sign = -1
             if self.field == Field.BLUE:
                 sign = -1
 
             if self.field == Field.RED:
                 sign = 1
-            self.can_messages.append(self.base_action.move([0, self.max_speed, self.max_speed/radius]))
+            self.can_messages.append(self.base_action.move([0, self.max_speed, sign * self.max_speed/radius]))
 
             if self.posture < -pi/2:
                 self.change_state(BehaviorList.ALIVE_BALL_SEARCH_WIDE)
@@ -275,7 +296,7 @@ class Behavior:
             num, x, y, z, is_obtainable = self.ball_state
 
             if num > 0:
-                self.self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
+                self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
 
         elif self.state == BehaviorList.ALIVE_BALL_OBTAINIG:
             num, x, y, z, is_obtainable = self.ball_state
