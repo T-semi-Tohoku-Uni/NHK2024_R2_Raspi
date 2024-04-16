@@ -111,8 +111,8 @@ class R2Controller(MainController):
         try:
             while True:
                 #出力画像は受け取らない
-                frame, id, output_data = self.MainProcess.q_frames_list[-1].get()
-                if id == OUTPUT_ID.BALL_CAMERA:
+                frame, id, output_data = self.MainProcess.q_out.get()
+                if id == OUTPUT_ID.BALL:
                    self.sensor_states['ball_camera'] = output_data
                 elif id == OUTPUT_ID.LINE:
                     self.sensor_states['line_camera'] = output_data
