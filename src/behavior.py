@@ -4,7 +4,7 @@ import enum
 from enum import Enum
 from typing import Dict, List
 import hardware_module
-from hardware_module import CANList
+from hardware_module import CANList, Sensors
 from NHK2024_Raspi_Library import LogSystem
 
 # 基本的な動作を表すクラス
@@ -74,9 +74,11 @@ class Behavior:
             "Left front": False,
             "Left rear": False
         }
-        self.posture_state: list[float] = [0, 0, 0, 0]
+        self.is_on_slope: bool = False
+        self.ball_camera: tuple = ()
+        self.line_camera: tuple = ()
+        #self.posture_state: list[float] = [0] 
         self.sensor_state: Dict = {}
-        self.camera_state: tuple = ()
 
         self.center_obtainable_area = center_obtainable_area
 
@@ -100,9 +102,11 @@ class Behavior:
 
     def update_sensor_state(self, state: Dict):
         self.sensor_state = state
-        self.wall_sensor_state = state['wall_sensor']
-        self.posture_state = state['posture']
-        self.camera_state = state['camera']
+        self.wall_sensor_state = state[Sensors.WALL_SENSOR]
+        self.is_on_slope = state[Sensors.IS_ON_SLOPE]
+        self.ball_camera = state[Sensors.BALL_CAMERA]
+        self.line_camera = state[Sensors.LINE_CAMERA]
+        #self.posture_state = state[Sensors.POSTURE]
 
     def get_state(self):
         return self.state
@@ -160,8 +164,8 @@ class Behavior:
                 self.can_messages.append(self.move_along_wall(Direction.RIGHT))
             elif self.field == Field.RED:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
-            if self.posture_state[0] < 0:
-                self.change_state(self.BehaviorList.ALIVE_SLOPE12)
+            #if self.posture_state[0] < 0:
+            #    self.change_state(self.BehaviorList.ALIVE_SLOPE12)
 
         #スロープのぼる
         elif self.state == BehaviorList.ALIVE_SLOPE12:
@@ -171,8 +175,8 @@ class Behavior:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
 
             #坂から抜けだしたら次の状態へ
-            if self.posture_state[0] > 0:
-                self.can_messages.append(self.change_state(self.BehaviorList.ALIVE_AREA2_OUTER_WALL))
+            #if self.posture_state[0] > 0:
+            #    self.can_messages.append(self.change_state(self.BehaviorList.ALIVE_AREA2_OUTER_WALL))
 
         #エリア２のスロープから水ゾーンの壁への遷移
         elif self.state == BehaviorList.ALIVE_AREA2_OUTER_WALL:
@@ -186,8 +190,8 @@ class Behavior:
             v = [0, self.max_speed, sign * self.max_speed / radius]
 
             #機体が横向きになったら次の状態へ
-            if self.posture_state[0] > center:
-                self.change_state(BehaviorList.ALIVE_AREA2_WATER_WALL)
+            #if self.posture_state[0] > center:
+            #    self.change_state(BehaviorList.ALIVE_AREA2_WATER_WALL)
 
             self.can_messages.append(self.base_action.move(v))
 
@@ -222,8 +226,8 @@ class Behavior:
             self.can_messages.append(self.base_action.move(0, self.max_speed, 0))
 
             #スロープ検出した後，平面検出するまで進む
-            if self.posture_state[0] > 0:
-                self.change_state(BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT)
+            #if self.posture_state[0] > 0:
+            #    self.change_state(BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT)
         
         elif self.state == BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT:
             radius = 2000
@@ -236,7 +240,7 @@ class Behavior:
             self.can_messages.append(self.base_action.move(0, self.max_speed, self.max_speed/radius))
 
         elif self.state == BehaviorList.ALIVE_BALL_OBTAINIG:
-            num, x, y, z, is_obtainable = self.camera_state
+            num, x, y, z, is_obtainable = self.ball_camera
             if num > 0:
                 v = [0, 0, 0]
                 gain = 2, 2, 0
@@ -266,7 +270,7 @@ if __name__ == '__main__':
         while True:
             sensor_state = {
                 'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
-                'posture': [0, 0, 0, 0]
+                #'posture': [0, 0, 0, 0]
             }
             behavior.update_sensor_state(sensor_state)
 

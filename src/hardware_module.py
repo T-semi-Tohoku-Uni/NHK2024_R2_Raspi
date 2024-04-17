@@ -16,6 +16,23 @@ class CANList(Enum):
     ANGLE_DIFF = 0x207
     LINE_DETECT = 0x208
 
+# センサーのリスト
+class Sensors(Enum):
+    WALL_SENSOR = 'wall_sensor'
+    IS_ON_SLOPE = 'is_on_slope'
+    BALL_CAMERA = 'ball_camera'
+    LINE_CAMERA = 'line_camera'
+    ROBOT_VEL = 'robot_vel'
+    POSTURE = 'posture'
+        
+"""
+'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
+'is_on_slope': False,
+'ball_camera': (0, 0, 0, 600, False),
+'line_camera': (False, False, False, 0),
+'robot_vel': [0, 0, 0],
+'posture': 0
+"""
 
 # ハードウェアのモジュールを表す親クラス
 class HWBaseModule:

@@ -1,6 +1,5 @@
 from NHK2024_Raspi_Library import MainController, TwoStateButtonHandler, TwoStateButton
-from NHK2024_Camera_Library import UpperCamera,LowerCamera,RearCamera,MainProcess,OBTAINABE_AREA_CENTER_X,OBTAINABE_AREA_CENTER_Y
-
+from NHK2024_Camera_Library import MainProcess, OUTPUT_ID, LINE_SLOPE_THRESHOLD, OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y
 import json
 from typing import Dict, Callable
 from enum import Enum
@@ -9,7 +8,7 @@ import can
 import time
 
 from behavior import Direction, Field, Behavior, BehaviorList
-from hardware_module import CANList
+from hardware_module import CANList,Sensors
     
 
 class ClientData:
@@ -82,18 +81,17 @@ class R2Controller(MainController):
         self.lister.init_write_fnc(self.log_system.write, self.log_system.update_received_can_log, self.log_system.update_send_can_log, self.log_system.update_error_log)
         self.lister.init_write_can_bus_func(self.write_can_bus)
         self.init_can_notifier(lister=self.lister)
-
-        UpperCam = UpperCamera(0)
-        LowerCam = LowerCamera(2)
-        RearCam = LowerCamera(2)
         
-        self.MainProcess = MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt',UpperCam,LowerCam,RearCam)
-        self.MainProcess.thread_start()
+        self.mainprocess = MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt')
+        self.mainprocess.thread_start()
 
         self.sensor_states = {
-                'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
-                'posture': [0, 0, 0, 0],
-                'camera': (0, 0, 0, 600, 0, False)
+                Sensors.WALL_SENSOR: {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
+                Sensors.IS_ON_SLOPE: False,
+                Sensors.BALL_CAMERA: (0, 0, 0, 600, False),
+                Sensors.LINE_CAMERA: (False, False, False, 0),
+                Sensors.ROBOT_VEL: [0, 0, 0],
+                Sensors.POSTURE: 0
             }
         self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y))
     
@@ -106,10 +104,13 @@ class R2Controller(MainController):
 
                 
                 # 出力画像は受け取らない
-                frame, id, output_data = self.MainProcess.q_frames_list[-1].get()
-                if id == 1:
-                    self.sensor_states['camera'] = output_data
-                #self.sensor_states['camera'] = (0, 1, 0, 600, 0, False)   
+                _, id, output_data = self.mainprocess.q_out.get()
+                if id == OUTPUT_ID.BALL:
+                    self.sensor_states[Sensors.BALL_CAMERA] = output_data
+                elif id == OUTPUT_ID.LINE:
+                    print(f"{output_data=}")
+                    self.sensor_states[Sensors.LINE_CAMERA] = output_data
+                
                 
                 #テスト用
                 '''
@@ -129,7 +130,7 @@ class R2Controller(MainController):
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
-            self.MainProcess.finish()
+            self.mainprocess.finish()
 
     def parse_from_can_message(self) -> None:
         received_datas = self.lister.get_received_data()
@@ -146,7 +147,7 @@ class R2Controller(MainController):
                     "Left rear": not(bool(data.data[0] & 0x04))
                     }
 
-                self.sensor_states['wall_sensor'] = wall_detection_state
+                self.sensor_states[Sensors.WALL_SENSOR] = wall_detection_state
     
 if __name__ == "__main__":
     controller = R2Controller()
