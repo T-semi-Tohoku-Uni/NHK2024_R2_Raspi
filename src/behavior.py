@@ -364,7 +364,7 @@ class Behavior:
             if is_obtainable:
                 self.can_messages.append(self.base_action.arm.down())
                 self.can_messages.append(self.base_action.fan.on())
-                for c in range self.can_messages.append:
+                for c in self.can_messages:
                     self.write_can_bus(c)
                 self.change_state(BehaviorList.ALIVE_BALL_PICKUP_WAITING)
         
