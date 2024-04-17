@@ -125,7 +125,7 @@ class Behavior:
         self.log_system = log_system
 
     def init_write_can_bus(self, write_can_bus):
-        self.base_action.init_write_can_bus_func = write_can_bus
+        self.base_action.init_write_can_bus_func(write_can_bus)
 
     def change_state(self, state: BehaviorList):
         print('Change state from {} to {}'.format(self.state, state))
@@ -364,8 +364,8 @@ class Behavior:
             if is_obtainable:
                 self.can_messages.append(self.base_action.arm.down())
                 self.can_messages.append(self.base_action.fan.on())
-                for c in self.can_messages:
-                    self.write_can_bus(c)
+                # for c in self.can_messages:
+                #     self.write_can_bus(c)
                 self.change_state(BehaviorList.ALIVE_BALL_PICKUP_WAITING)
         
         elif self.state == BehaviorList.ALIVE_BALL_PICKUP_WAITING:

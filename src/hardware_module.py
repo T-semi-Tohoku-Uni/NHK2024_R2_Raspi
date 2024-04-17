@@ -51,13 +51,15 @@ class Arm(HWBaseModule):
     def __init__(self):
         super().__init__(CANList.ARM.value, None, CANList.EMERGENCY.value)
 
-        self.state = self.ArmState.DOWN
+        self.state = None
 
     def up(self):
+        self.state = self.ArmState.UP
         self.write_can_bus(self.can_id, bytearray([0x00]))
         return self.can_id, bytearray([0x00])
 
     def down(self):
+        self.state = self.ArmState.DOWN
         self.write_can_bus(self.can_id, bytearray([0x01]))
         return self.can_id, bytearray([0x01])
 
@@ -73,13 +75,15 @@ class VacuumFan(HWBaseModule):
     def __init__(self):
         super().__init__(CANList.VACUUM_FAN.value, None, CANList.EMERGENCY.value)
 
-        self.state = self.VacuumFanState.OFF
+        self.state = None
 
     def on(self):
+        self.state = self.VacuumFanState.ON
         self.write_can_bus(self.can_id, bytearray([0x00]))
         return self.can_id, bytearray([0x01])
 
     def off(self):
+        self.state = self.VacuumFanState.OFF
         self.write_can_bus(self.can_id, bytearray([0x01]))
         return self.can_id, bytearray([0x00])
 

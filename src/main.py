@@ -121,10 +121,10 @@ class R2Controller(MainController):
                 self.behavior.update_sensor_state(self.sensor_states)
                 
 
-                commands = self.behavior.action()
+                self.behavior.action()
                 
-                for c in commands:
-                    self.write_can_bus(c[0], c[1])
+                # for c in commands:
+                #     self.write_can_bus(c[0], c[1])
 
                 time.sleep(0.01)
 
