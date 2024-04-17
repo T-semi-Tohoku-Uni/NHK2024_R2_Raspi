@@ -33,9 +33,14 @@ class HWBaseModule:
         self.can_id_feedback = can_id_feedback
         self.can_id_error = can_id_error
 
+        self.write_can_bus = None
+
         self.can_message = None
         self.base_state = self.BaseState.INIT
         pass
+
+    def init_write_can_bus_func(self, write_can_bus):
+        self.write_can_bus = write_can_bus
 
 
 class Arm(HWBaseModule):
@@ -49,10 +54,11 @@ class Arm(HWBaseModule):
         self.state = self.ArmState.DOWN
 
     def up(self):
-
+        self.write_can_bus(self.can_id, bytearray([0x00]))
         return self.can_id, bytearray([0x00])
 
     def down(self):
+        self.write_can_bus(self.can_id, bytearray([0x01]))
         return self.can_id, bytearray([0x01])
 
     def get_state(self):
@@ -70,9 +76,11 @@ class VacuumFan(HWBaseModule):
         self.state = self.VacuumFanState.OFF
 
     def on(self):
+        self.write_can_bus(self.can_id, bytearray([0x00]))
         return self.can_id, bytearray([0x01])
 
     def off(self):
+        self.write_can_bus(self.can_id, bytearray([0x01]))
         return self.can_id, bytearray([0x00])
 
     def get_state(self):
