@@ -121,10 +121,12 @@ class Behavior:
         self.stored_balls = 0
 
         self.can_messages = []
-        self.log_system = None
+        self.log_system = None        
+        self.main_log_file_name = 'behavior_log'
 
     def init_log_system(self, log_system):
         self.log_system = log_system
+        self.log_system.create_new_log(self.main_log_file_name)
 
     def init_write_can_bus(self, write_can_bus):
         self.base_action.init_write_can_bus_func(write_can_bus)
@@ -133,8 +135,8 @@ class Behavior:
         print('Change state from {} to {}'.format(self.state, state))
 
         if self.log_system is not None:
-            self.log_system.write('Change state from {} to {}'.format(self.state, state))
-            self.log_system.write('Sensor state: {}'.format(self.sensor_state))
+            self.log_system.write('Change state from {} to {}'.format(self.state, state), self.main_log_file_name)
+            self.log_system.write('Sensor state: {}'.format(self.sensor_state), self.main_log_file_name)
         self.state = state
 
     def update_sensor_state(self, state: Dict):
@@ -144,6 +146,10 @@ class Behavior:
         self.ball_camera = state[Sensors.BALL_CAMERA]
         self.line_camera = state[Sensors.LINE_CAMERA]
         self.posture = state[Sensors.POSTURE]
+        self.robot_vel = state[Sensors.ROBOT_VEL]
+
+        self.log_system.write('Update sensor state', self.main_log_file_name)
+        self.log_system.write('Sensor state: {}'.format(self.sensor_state), self.main_log_file_name)
 
     def get_state(self):
         return self.state
@@ -375,7 +381,7 @@ class Behavior:
         
         elif self.state == BehaviorList.ALIVE_BALL_PICKUP_WAITING:
             time.sleep(1)
-            self.change_state(BehaviorList.ALIVE_BALL_SEARCH_WIDE)
+            self.change_state(BehaviorList.ALIVE_MOVE_TO_SILO)
         
         # サイロエリアのラインを探す
         elif self.state == BehaviorList.ALIVE_FIND_SILOLINE:
