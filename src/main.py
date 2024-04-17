@@ -88,6 +88,7 @@ class R2Controller(MainController):
         self.init_can_notifier(lister=self.lister)
 
         self.behavior.init_log_system(self.log_system)
+        self.behavior.init_write_can_bus(self.write_can_bus)
 
         # UpperCam = UpperCamera(0)
         # LowerCam = LowerCamera(2)
@@ -100,6 +101,7 @@ class R2Controller(MainController):
                 'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
                 'is_on_slope': False,
                 'ball_camera': (0, 0, 0, 600, False),
+                'line_camera': (False, False, False, 0),
                 'robot_vel': [0, 0, 0],
                 'posture': 0
             }
