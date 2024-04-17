@@ -1,5 +1,5 @@
 from NHK2024_Raspi_Library import MainController, TwoStateButtonHandler, TwoStateButton
-from NHK2024_Camera_Library import UpperCamera,LowerCamera,RearCamera,MainProcess,OBTAINABE_AREA_CENTER_X,OBTAINABE_AREA_CENTER_Y
+from NHK2024_Camera_Library import UpperCamera,LowerCamera,RearCamera,MainProcess,OBTAINABE_AREA_CENTER_X,OBTAINABE_AREA_CENTER_Y,OUTPUT_ID
 
 import json
 from typing import Dict, Callable
@@ -90,18 +90,21 @@ class R2Controller(MainController):
         self.behavior.init_log_system(self.log_system)
         self.behavior.init_write_can_bus(self.write_can_bus)
 
-        # UpperCam = UpperCamera(0)
-        # LowerCam = LowerCamera(2)
-        # RearCam = LowerCamera(2)
-        
-        # self.MainProcess = MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt',UpperCam,LowerCam,RearCam)
-        # self.MainProcess.thread_start()
+        # 物体検出モデルのパス
+        model_path = 'src/NHK2024_Camera_Library/models/20240109best.pt'
+
+        # メインプロセスを実行するクラス
+        mainprocess = MainProcess(model_path)
+
+        # マルチスレッドの実行
+        mainprocess.thread_start()
 
         self.sensor_states = {
                 'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
                 'is_on_slope': False,
                 'ball_camera': (0, 0, 0, 600, False),
                 'line_camera': (False, False, False, 0),
+                'silo_camera': (0, 0, 0),
                 'robot_vel': [0, 0, 0],
                 'posture': 0
             }
@@ -111,21 +114,21 @@ class R2Controller(MainController):
         print(f"Start R2Controller main")
         try:
             while True:
-                # 出力画像は受け取らない
-                #frame, id, output_data = self.MainProcess.q_frames_list[-1].get()
-                #if id == 1:
-                #    self.sensor_states['ball_camera'] = output_data
+                #出力画像は受け取らない
+                frame, id, output_data = self.MainProcess.q_out.get()
+                if id == OUTPUT_ID.BALL:
+                   self.sensor_states['ball_camera'] = output_data
+                elif id == OUTPUT_ID.LINE:
+                    self.sensor_states['line_camera'] = output_data
+                elif id == OUTPUT_ID.SILO:
+                    self.sensor_states['silo_camera'] = output_data
+                #self.sensor_states['ball_camera'] = (0, 0, 0, 600, False)
 
                 self.parse_from_can_message()
                 self.lister.clear_received_data()
                 self.behavior.update_sensor_state(self.sensor_states)
-                
-
                 self.behavior.action()
                 
-                # for c in commands:
-                #     self.write_can_bus(c[0], c[1])
-
                 time.sleep(0.01)
 
         

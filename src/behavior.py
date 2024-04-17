@@ -147,7 +147,15 @@ class Behavior:
     def get_state(self):
         return self.state
 
-    def move_along_wall(self, direction: Direction, approach_speed = 400, move_direction: bool = True):
+    def follow_object(self, object_pos_error):
+        gain = [2, 2, 0]
+        v = [0, 0, 0]
+        for i in range(3):
+            v[i] = gain[i] * object_pos_error[i]
+        return self.base_action.move(v)
+
+
+    def move_along_wall(self, direction: Direction, move_direction: bool = True):
         if direction not in Direction:
             print("Invalid direction")
             return False
