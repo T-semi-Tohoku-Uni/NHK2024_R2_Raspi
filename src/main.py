@@ -1,6 +1,5 @@
 from NHK2024_Raspi_Library import MainController, TwoStateButtonHandler, TwoStateButton
-from NHK2024_Camera_Library import UpperCamera,LowerCamera,RearCamera,MainProcess,OBTAINABE_AREA_CENTER_X,OBTAINABE_AREA_CENTER_Y,OUTPUT_ID
-
+from NHK2024_Camera_Library import MainProcess, OUTPUT_ID, LINE_SLOPE_THRESHOLD, OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y
 import json
 from typing import Dict, Callable
 from enum import Enum
@@ -9,7 +8,7 @@ import can
 import time
 
 from behavior import Direction, Field, Behavior, BehaviorList
-from hardware_module import CANList
+from hardware_module import CANList,Sensors
     
 
 class ClientData:
@@ -77,8 +76,8 @@ class R2Controller(MainController):
     def __init__(self):
         super().__init__("tsemiR2", 11111, is_udp=False)
         self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
-                                 start_state=BehaviorList.INITIALIZING,
-                                 finish_state=BehaviorList.ALIVE_BALL_SEARCH_WIDE
+                                 start_state=BehaviorList.ALIVE_BALL_OBTAINIG,
+                                 finish_state=BehaviorList.ALIVE_BALL_PICKUP_WAITING
                                  )
         
         # init can message lister
@@ -94,19 +93,18 @@ class R2Controller(MainController):
         model_path = 'src/NHK2024_Camera_Library/models/20240109best.pt'
 
         # メインプロセスを実行するクラス
-        mainprocess = MainProcess(model_path)
+        self.mainprocess = MainProcess(model_path)
 
         # マルチスレッドの実行
-        mainprocess.thread_start()
+        self.mainprocess.thread_start()
 
         self.sensor_states = {
-                'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
-                'is_on_slope': False,
-                'ball_camera': (0, 0, 0, 600, False),
-                'line_camera': (False, False, False, 0),
-                'silo_camera': (0, 0, 0),
-                'robot_vel': [0, 0, 0],
-                'posture': 0
+                Sensors.WALL_SENSOR: {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
+                Sensors.IS_ON_SLOPE: False,
+                Sensors.BALL_CAMERA: (0, 0, 0, 600, False),
+                Sensors.LINE_CAMERA: (False, False, False, 0),
+                Sensors.ROBOT_VEL: [0, 0, 0],
+                Sensors.POSTURE: 0
             }
     
     def main(self):
@@ -115,14 +113,11 @@ class R2Controller(MainController):
         try:
             while True:
                 #出力画像は受け取らない
-                frame, id, output_data = self.MainProcess.q_out.get()
+                frame, id, output_data = self.mainprocess.q_out.get()
                 if id == OUTPUT_ID.BALL:
-                   self.sensor_states['ball_camera'] = output_data
+                   self.sensor_states[Sensors.BALL_CAMERA] = output_data
                 elif id == OUTPUT_ID.LINE:
-                    self.sensor_states['line_camera'] = output_data
-                elif id == OUTPUT_ID.SILO:
-                    self.sensor_states['silo_camera'] = output_data
-                #self.sensor_states['ball_camera'] = (0, 0, 0, 600, False)
+                    self.sensor_states[Sensors.LINE_CAMERA] = output_data
 
                 self.parse_from_can_message()
                 self.lister.clear_received_data()
@@ -151,14 +146,14 @@ class R2Controller(MainController):
                     "Left rear": not(bool(data.data[0] & 0x04))
                     }
 
-                self.sensor_states['wall_sensor'] = wall_detection_state
+                self.sensor_states[Sensors.WALL_SENSOR] = wall_detection_state
 
             elif can_id == CANList.SLOPE_DETECTION.value:
-                self.sensor_states['is_on_slope'] = bool(data.data[0])
+                self.sensor_states[Sensors.IS_ON_SLOPE] = bool(data.data[0])
 
             elif can_id == CANList.ROBOT_VEL_FB.value:
-                self.sensor_states['robot_vel'] = [(data.data[0] - 127) * 16, (data.data[1] - 127) * 16, (data.data[2] - 127) * 0.02]
-                self.sensor_states['posture'] = (data.data[3] - 127) / 40
+                self.sensor_states[Sensors.ROBOT_VEL] = [(data.data[0] - 127) * 16, (data.data[1] - 127) * 16, (data.data[2] - 127) * 0.02]
+                self.sensor_states[Sensors.POSTURE] = (data.data[3] - 127) / 40
                 # print('posture:', self.sensor_states['posture'])
     
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ import enum
 from enum import Enum
 from typing import Dict, List
 import hardware_module
-from hardware_module import CANList
+from hardware_module import CANList, Sensors
 from NHK2024_Raspi_Library import LogSystem
 from math import pi
 import math
@@ -105,6 +105,7 @@ class Behavior:
             "Left front": False,
             "Left rear": False
         }
+
         self.sensor_state: Dict = {}
         self.is_on_slope = False
         self.posture = 0
@@ -137,12 +138,11 @@ class Behavior:
 
     def update_sensor_state(self, state: Dict):
         self.sensor_state = state
-        self.wall_sensor_state = state['wall_sensor']
-        self.ball_camera = state['ball_camera']
-        self.is_on_slope = state['is_on_slope']
-        self.robot_vel = state['robot_vel']
-        self.posture = state['posture']
-        self.line_camera = state['line_camera']
+        self.wall_sensor_state = state[Sensors.WALL_SENSOR]
+        self.is_on_slope = state[Sensors.IS_ON_SLOPE]
+        self.ball_camera = state[Sensors.BALL_CAMERA]
+        self.line_camera = state[Sensors.LINE_CAMERA]
+        self.posture_state = state[Sensors.POSTURE]
 
     def get_state(self):
         return self.state
@@ -155,7 +155,7 @@ class Behavior:
         return self.base_action.move(v)
 
 
-    def move_along_wall(self, direction: Direction, move_direction: bool = True):
+    def move_along_wall(self, direction: Direction, move_direction: bool = True, approach_speed = 300):
         if direction not in Direction:
             print("Invalid direction")
             return False
@@ -187,9 +187,9 @@ class Behavior:
         self.log_system.write('Call shutdown function')
         print('Call shutdown function')
         self.change_state(BehaviorList.FINISH)
-        self.can_messages.append(self.base_action.fan.off())
-        self.can_messages.append(self.base_action.arm.up())
-        self.can_messages.append(self.base_action.move([0, 0, 0]))
+        self.base_action.fan.off()
+        self.base_action.arm.up()
+        self.base_action.move([0, 0, 0])
         exit()
 
     def calculate_position(self):
