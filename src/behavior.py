@@ -4,7 +4,7 @@ import enum
 from enum import Enum
 from typing import Dict, List
 import hardware_module
-from hardware_module import CANList
+from hardware_module import CANList, Sensors
 from NHK2024_Raspi_Library import LogSystem
 from math import pi
 
@@ -86,6 +86,7 @@ class Behavior:
             "Left front": False,
             "Left rear": False
         }
+
         self.sensor_state: Dict = {}
         self.camera_state: tuple = ()
         self.is_on_slope = False
@@ -113,11 +114,11 @@ class Behavior:
 
     def update_sensor_state(self, state: Dict):
         self.sensor_state = state
-        self.wall_sensor_state = state['wall_sensor']
-        self.ball_state = state['ball_camera']
-        self.is_on_slope = state['is_on_slope']
-        self.robot_vel = state['robot_vel']
-        self.posture = state['posture']
+        self.wall_sensor_state = state[Sensors.WALL_SENSOR]
+        self.is_on_slope = state[Sensors.IS_ON_SLOPE]
+        self.ball_camera = state[Sensors.BALL_CAMERA]
+        self.line_camera = state[Sensors.LINE_CAMERA]
+        self.posture_state = state[Sensors.POSTURE]
 
     def get_state(self):
         return self.state

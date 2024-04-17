@@ -1,6 +1,5 @@
 from NHK2024_Raspi_Library import MainController, TwoStateButtonHandler, TwoStateButton
-from NHK2024_Camera_Library import UpperCamera,LowerCamera,RearCamera,MainProcess,OBTAINABE_AREA_CENTER_X,OBTAINABE_AREA_CENTER_Y,OUTPUT_ID
-
+from NHK2024_Camera_Library import MainProcess, OUTPUT_ID, LINE_SLOPE_THRESHOLD, OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y
 import json
 from typing import Dict, Callable
 from enum import Enum
@@ -9,7 +8,7 @@ import can
 import time
 
 from behavior import Direction, Field, Behavior, BehaviorList
-from hardware_module import CANList
+from hardware_module import CANList,Sensors
     
 
 class ClientData:
@@ -96,13 +95,12 @@ class R2Controller(MainController):
         mainprocess.thread_start()
 
         self.sensor_states = {
-                'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
-                'is_on_slope': False,
-                'ball_camera': (0, 0, 0, 600, False),
-                'line_camera': (False, False, False, 0),
-                'silo_camera': (0, 0, 0),
-                'robot_vel': [0, 0, 0],
-                'posture': 0
+                Sensors.WALL_SENSOR: {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
+                Sensors.IS_ON_SLOPE: False,
+                Sensors.BALL_CAMERA: (0, 0, 0, 600, False),
+                Sensors.LINE_CAMERA: (False, False, False, 0),
+                Sensors.ROBOT_VEL: [0, 0, 0],
+                Sensors.POSTURE: 0
             }
     
     def main(self):
@@ -119,22 +117,13 @@ class R2Controller(MainController):
                 elif id == OUTPUT_ID.SILO:
                     self.sensor_states['silo_camera'] = output_data
                 #self.sensor_states['ball_camera'] = (0, 0, 0, 600, False)
-                
-                #テスト用
-                '''
-                if not self.behavior.get_state == BehaviorList.ALIVE_BALL_OBTAINIG:
-                    self.behavior.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
-                '''
 
                 self.parse_from_can_message()
                 self.lister.clear_received_data()
                 self.behavior.update_sensor_state(self.sensor_states)
                 
 
-                commands = self.behavior.action()
-                
-                for c in commands:
-                    self.write_can_bus(c[0], c[1])
+                self.behavior.action()
 
                 time.sleep(0.01)
 
