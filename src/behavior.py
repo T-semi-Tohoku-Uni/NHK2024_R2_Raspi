@@ -85,7 +85,7 @@ class Behavior:
     def __init__(self, field: Field, 
                  center_obtainable_area, 
                  enable_log=True, 
-                 start_state: BehaviorList = BehaviorList.INITIALIZING, 
+                 start_state: BehaviorList = BehaviorList.INITIALIZED, 
                  finish_state: BehaviorList = BehaviorList.FINISH
                  ):
         
@@ -93,7 +93,8 @@ class Behavior:
 
         
         self.field = field
-        self.state = start_state
+        self.state = BehaviorList.INITIALIZING
+        self.start_state = start_state
         self.finish_state = finish_state
 
 
@@ -142,7 +143,7 @@ class Behavior:
         self.is_on_slope = state[Sensors.IS_ON_SLOPE]
         self.ball_camera = state[Sensors.BALL_CAMERA]
         self.line_camera = state[Sensors.LINE_CAMERA]
-        self.posture_state = state[Sensors.POSTURE]
+        self.posture = state[Sensors.POSTURE]
 
     def get_state(self):
         return self.state
@@ -213,7 +214,7 @@ class Behavior:
         if self.state == BehaviorList.INITIALIZING:
             self.can_messages.append(self.base_action.fan.off())
             self.can_messages.append(self.base_action.arm.up())
-            self.change_state(BehaviorList.INITIALIZED)
+            self.change_state(self.start_state)
 
         elif self.state == BehaviorList.INITIALIZED:
             time.sleep(1)
@@ -222,7 +223,6 @@ class Behavior:
         #スタート準備OK
         elif self.state == BehaviorList.START_READY:
             self.change_state(BehaviorList.ALIVE_AREA1)
-            #self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
 
         #エリア１の壁に沿って進む
         elif self.state == BehaviorList.ALIVE_AREA1:
@@ -282,7 +282,6 @@ class Behavior:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
 
             if not self.wall_sensor_state['Right front']:
-                time.sleep(0.3)
                 self.change_state(BehaviorList.ALIVE_APPROACH_SLOPE23_ROTATE)
 
         elif self.state == BehaviorList.ALIVE_APPROACH_SLOPE23_ROTATE:
@@ -295,7 +294,6 @@ class Behavior:
                 sign = 1
             v = [0, self.max_speed, sign * self.max_speed / radius]
 
-            #print(self.posture)
             #機体が横向きになったら次の状態へ
             if self.posture < 0:
                 self.change_state(BehaviorList.ALIVE_APPROACH_SLOPE23)
@@ -319,7 +317,7 @@ class Behavior:
         
         #半径2000の円を描きながら適当に真ん中あたりに行く
         elif self.state == BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT:
-            radius = 2000
+            radius = 1500
             self.max_speed = 500
             sign = -1
             if self.field == Field.BLUE:
@@ -334,8 +332,8 @@ class Behavior:
             if num > 0:
                 self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
             
-            elif self.line_camera[0] and self.posture < -11 / 24 * pi:
-                self.change_state(BehaviorList.ALIVE_AREA3_FOLLOW_STRAGE_CENTERLINE)
+            # elif self.line_camera[0] and self.posture < -11 / 24 * pi:
+            #     self.change_state(BehaviorList.ALIVE_AREA3_FOLLOW_STRAGE_CENTERLINE)
 
             elif self.posture < -pi/2:
                 self.change_state(BehaviorList.ALIVE_BALL_SEARCH_WIDE)
@@ -372,8 +370,7 @@ class Behavior:
             if is_obtainable:
                 self.can_messages.append(self.base_action.arm.down())
                 self.can_messages.append(self.base_action.fan.on())
-                # for c in self.can_messages:
-                #     self.write_can_bus(c)
+                self.base_action.move([0, 0, 0])
                 self.change_state(BehaviorList.ALIVE_BALL_PICKUP_WAITING)
         
         elif self.state == BehaviorList.ALIVE_BALL_PICKUP_WAITING:

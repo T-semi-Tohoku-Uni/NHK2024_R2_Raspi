@@ -76,8 +76,8 @@ class R2Controller(MainController):
     def __init__(self):
         super().__init__("tsemiR2", 11111, is_udp=False)
         self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
-                                 start_state=BehaviorList.ALIVE_BALL_OBTAINIG,
-                                 finish_state=BehaviorList.ALIVE_BALL_PICKUP_WAITING
+                                 start_state=BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT,
+                                 finish_state=BehaviorList.ALIVE_ALIGN_SILOZONE
                                  )
         
         # init can message lister
@@ -95,8 +95,7 @@ class R2Controller(MainController):
         # メインプロセスを実行するクラス
         self.mainprocess = MainProcess(model_path)
 
-        # マルチスレッドの実行
-        self.mainprocess.thread_start()
+        self.is_running = False
 
         self.sensor_states = {
                 Sensors.WALL_SENSOR: {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
@@ -113,11 +112,20 @@ class R2Controller(MainController):
         try:
             while True:
                 #出力画像は受け取らない
-                frame, id, output_data = self.mainprocess.q_out.get()
-                if id == OUTPUT_ID.BALL:
-                   self.sensor_states[Sensors.BALL_CAMERA] = output_data
-                elif id == OUTPUT_ID.LINE:
-                    self.sensor_states[Sensors.LINE_CAMERA] = output_data
+                state = self.behavior.get_state()
+
+                # Area3に行くまで画像処理をオフにする
+                if state.value > BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT.value:
+                    if not self.is_running:
+                        # マルチスレッドの実行
+                        self.mainprocess.thread_start()
+                        self.is_running = True
+                    frame, id, output_data = self.mainprocess.q_out.get()
+                    print(f"id: {id}, output_data: {output_data}")
+                    if id == OUTPUT_ID.BALL:
+                        self.sensor_states[Sensors.BALL_CAMERA] = output_data
+                    elif id == OUTPUT_ID.LINE:
+                        self.sensor_states[Sensors.LINE_CAMERA] = output_data
 
                 self.parse_from_can_message()
                 self.lister.clear_received_data()
@@ -129,7 +137,7 @@ class R2Controller(MainController):
         
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
-            self.MainProcess.finish()
+            self.mainprocess.finish()
             self.behavior.shutdown()    
 
     def parse_from_can_message(self) -> None:
