@@ -1,5 +1,6 @@
 # NHK2024_R2_Raspi
-
+## シリアルモニタを使いたいとき
+`minicom -D /dev/ttyACM0`
 ## 色々処理を追加するとき
 基本的には`main`関数の`while True ... `の中身を書き換えてもらえると.
 
