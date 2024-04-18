@@ -122,7 +122,7 @@ class Behavior:
 
         self.can_messages = []
         self.log_system = None        
-        self.main_log_file_name = 'behavior_log'
+        self.main_log_file_name = 'behavior.log'
 
     def init_log_system(self, log_system):
         self.log_system = log_system
@@ -148,8 +148,7 @@ class Behavior:
         self.posture = state[Sensors.POSTURE]
         self.robot_vel = state[Sensors.ROBOT_VEL]
 
-        self.log_system.write('Update sensor state', self.main_log_file_name)
-        self.log_system.write('Sensor state: {}'.format(self.sensor_state), self.main_log_file_name)
+        self.log_system.write('Update sensor state: {}'.format(self.sensor_state), self.main_log_file_name)
 
     def get_state(self):
         return self.state

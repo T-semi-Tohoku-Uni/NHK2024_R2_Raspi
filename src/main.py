@@ -76,7 +76,7 @@ class R2Controller(MainController):
     def __init__(self):
         super().__init__("tsemiR2", 11111, is_udp=False)
         self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
-                                 start_state=BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT,
+                                 start_state=BehaviorList.INITIALIZED,
                                  finish_state=BehaviorList.ALIVE_ALIGN_SILOZONE
                                  )
         
