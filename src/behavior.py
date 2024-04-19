@@ -22,9 +22,16 @@ class BaseAction:
         self.arm.init_write_can_bus_func(write_can_bus)
         self.fan.init_write_can_bus_func(write_can_bus)
 
-    def move(self, v:List):
+    def move(self, v:List, is_field = False):
         gain = [1/16, 1/16, 50]
-        tx_buffer = bytearray([127, 127, 127])
+            
+        tx_buffer = bytearray([127, 127, 127, 0])
+        
+        if is_field:
+            tx_buffer[3] = 1
+        else :
+            tx_buffer[3] = 0
+            
         for i in range(3):
             b = int(v[i] * gain[i] + 127)
             if b > 255:
@@ -35,17 +42,6 @@ class BaseAction:
 
         self.write_can_bus(CANList.ROBOT_VEL.value, tx_buffer)
         return CANList.ROBOT_VEL.value, tx_buffer
-    
-    def move_field(self, field_v:list, posture):
-        p = posture
-
-        lateral_field_v = np.array([field_v[0], field_v[1]])
-        rot_matrix = np.array([[math.cos(-p), -math.sin(-p)], 
-                               [math.sin(-p), math.cos(-p)]])
-
-        np_v = np.dot(rot_matrix, lateral_field_v)
-        v = [-np_v[0], -np_v[1], field_v[2]]
-        return self.move(v)
     
 
 class Direction(Enum):
