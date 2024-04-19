@@ -31,7 +31,7 @@ class BaseAction:
             tx_buffer[3] = 1
         else :
             tx_buffer[3] = 0
-            
+
         for i in range(3):
             b = int(v[i] * gain[i] + 127)
             if b > 255:
@@ -335,7 +335,7 @@ class Behavior:
         
         #半径2000の円を描きながら適当に真ん中あたりに行く
         elif self.state == BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT:
-            radius = 1500
+            radius = 2300
             self.max_speed = 500
             sign = -1
             if self.field == Field.BLUE:
@@ -378,24 +378,22 @@ class Behavior:
             num, x, y, z, is_obtainable = self.ball_camera
             if num > 0:
                 pos = x - self.center_obtainable_area[0], y - self.center_obtainable_area[1], 0
-                msg = self.follow_object(pos)
-
-                self.can_messages.append(msg)
+                self.follow_object(pos, gain=(0.5, 0.5, 0))
             
             elif num == 0:
                 self.change_state(BehaviorList.ALIVE_BALL_SEARCH_WIDE)
 
-            if is_obtainable:
+            if is_obtainable:                
+                self.base_action.move([0, 0, 0])
                 self.can_messages.append(self.base_action.arm.down())
                 self.can_messages.append(self.base_action.fan.on())
-                self.base_action.move([0, 0, 0])
                 self.change_state(BehaviorList.ALIVE_BALL_PICKUP_WAITING)
         
         elif self.state == BehaviorList.ALIVE_BALL_PICKUP_WAITING:
             self.base_action.fan.on()
-            time.sleep(4)
+            time.sleep(2)
             self.base_action.arm.up()
-            time.sleep(1)
+            time.sleep(1.5)
             self.change_state(BehaviorList.ALIVE_MOVE_TO_SILO)
         
         # サイロエリアに向かう
@@ -405,9 +403,9 @@ class Behavior:
             if (self.posture > pi * 0.46):
                 self.change_state(BehaviorList.ALIVE_FIND_SILOLINE)
 
-            gain = 1
+            gain = 0.2
             v = [0, 0, (pi/2 - self.posture) * gain]
-            self.can_messages.append(self.base_action.move(v))
+            self.base_action.move(v)
 
             if self.wall_sensor_state['Front right'] or self.wall_sensor_state['Front left']:
                 self.change_state(BehaviorList.FINISH)
@@ -429,7 +427,7 @@ class Behavior:
             vertical, right, left, lateral_error, angle_error = self.line_camera
             # 縦ラインに追従
             if vertical:
-                self.follow_object([lateral_error, 400, angle_error], gain=(0.5, 1, 0.2))                
+                self.follow_object([lateral_error, 400, angle_error], gain=(0.5, 1, 0.25))                
             
             # ラインがなかったら探しに行く
             else :
@@ -455,7 +453,7 @@ class Behavior:
 
         elif self.state == BehaviorList.ALIVE_PUTIN_WAIT:
             self.base_action.fan.off()
-            time.sleep(1)
+            time.sleep(2)
             self.change_state(BehaviorList.ALIVE_MOVE_TO_STORAGE)
         
         elif self.state == BehaviorList.ALIVE_MOVE_TO_STORAGE:

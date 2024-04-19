@@ -77,7 +77,7 @@ class R2Controller(MainController):
         super().__init__("tsemiR2", 11111, is_udp=False)
         self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
                                  start_state=BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT,
-                                 finish_state=BehaviorList.ALIVE_ALIGN_SILOZONE
+                                 finish_state=BehaviorList.ALIVE_PUTIN_WAIT
                                  )
         
         # init can message lister
@@ -112,20 +112,19 @@ class R2Controller(MainController):
         try:
             while True:
                 # Area3に行くまで画像処理をオフにする
-                # state = self.behavior.get_state()
-                # if state.value > BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT.value:
-                #     if not self.is_running:
-                #         # マルチスレッドの実行
-                #         self.mainprocess.thread_start()
-                #         self.is_running = True
-                #     self.sensor_states[Sensors.BALL_CAMERA] = self.mainprocess.update_ball_camera_out()
-                #     self.sensor_states[Sensors.LINE_CAMERA] = self.mainprocess.update_line_camera_out()
+                state = self.behavior.get_state()
+                if state.value > BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT.value:
+                    if not self.is_running:
+                        # マルチスレッドの実行
+                        self.mainprocess.thread_start()
+                        self.is_running = True
+                    self.sensor_states[Sensors.BALL_CAMERA] = self.mainprocess.update_ball_camera_out()
+                    self.sensor_states[Sensors.LINE_CAMERA] = self.mainprocess.update_line_camera_out()
 
-                # self.parse_from_can_message()
-                # self.lister.clear_received_data()
-                # self.behavior.update_sensor_state(self.sensor_states)
-                # self.behavior.action()
-                self.behavior.base_action.move([-500, 0, 0.2], is_field = True)
+                self.parse_from_can_message()
+                self.lister.clear_received_data()
+                self.behavior.update_sensor_state(self.sensor_states)
+                self.behavior.action()
                 time.sleep(0.01)
         
         except KeyboardInterrupt:
