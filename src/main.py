@@ -120,12 +120,8 @@ class R2Controller(MainController):
                         # マルチスレッドの実行
                         self.mainprocess.thread_start()
                         self.is_running = True
-                    frame, id, output_data = self.mainprocess.q_out.get()
-                    print(f"id: {id}, output_data: {output_data}")
-                    if id == OUTPUT_ID.BALL:
-                        self.sensor_states[Sensors.BALL_CAMERA] = output_data
-                    elif id == OUTPUT_ID.LINE:
-                        self.sensor_states[Sensors.LINE_CAMERA] = output_data
+                    self.sensor_states[Sensors.BALL_CAMERA] = self.mainprocess.update_ball_camera_out()
+                    self.sensor_states[Sensors.LINE_CAMERA] = self.mainprocess.update_line_camera_out()
 
                 self.parse_from_can_message()
                 self.lister.clear_received_data()
