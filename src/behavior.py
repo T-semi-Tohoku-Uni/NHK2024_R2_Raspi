@@ -189,16 +189,17 @@ class Behavior:
                 print("Invalid wall sensor state")
                 return False
         elif direction == Direction.LEFT:
+            pass
+        elif direction == Direction.FRONT:
             if self.wall_sensor_state['Front right'] == False and self.wall_sensor_state['Front left'] == False:
                 return self.base_action.move([0, approach_speed, 0])
             elif self.wall_sensor_state['Front right'] == False and self.wall_sensor_state['Front left']:
-                return self.base_action.move([0, virtual_thrust_speed, -1 * align_angle_speed])
-            elif self.wall_sensor_state['Front right'] and self.wall_sensor_state['Front left'] == False:
                 return self.base_action.move([0, virtual_thrust_speed, align_angle_speed])
+            elif self.wall_sensor_state['Front right'] and self.wall_sensor_state['Front left'] == False:
+                return self.base_action.move([0, virtual_thrust_speed, -align_angle_speed])
             elif self.wall_sensor_state['Front right'] and self.wall_sensor_state['Front left']:
                 return self.base_action.move([0, virtual_thrust_speed, 0])
-        elif direction == Direction.FRONT:
-            pass
+        
         elif direction == Direction.BACK:
             pass
 
@@ -254,9 +255,9 @@ class Behavior:
         #スロープのぼる
         elif self.state == BehaviorList.ALIVE_SLOPE12:
             if self.field == Field.BLUE:
-                self.can_messages.append(self.base_action.move([-30, self.max_speed, 0]))
+                self.can_messages.append(self.base_action.move([-20, self.max_speed, 0]))
             elif self.field == Field.RED:
-                self.can_messages.append(self.base_action.move([30, self.max_speed, 0]))
+                self.can_messages.append(self.base_action.move([20, self.max_speed, 0]))
 
             #坂から抜けだしたら次の状態へ
             if not self.is_on_slope:
@@ -445,6 +446,7 @@ class Behavior:
                 self.change_state(BehaviorList.ALIVE_PUTIN)
 
         elif self.state == BehaviorList.ALIVE_PUTIN:
+            self.base_action.move([0, 0, 0])
             self.can_messages.append(self.base_action.fan.off())
             self.stored_balls = self.stored_balls + 1
             self.change_state(BehaviorList.ALIVE_PUTIN_WAIT)
@@ -457,8 +459,11 @@ class Behavior:
             self.change_state(BehaviorList.ALIVE_MOVE_TO_STORAGE)
         
         elif self.state == BehaviorList.ALIVE_MOVE_TO_STORAGE:
-            rot = - pi / 2 - self.posture
-            self.base_action.move_field([self.max_speed, 0, rot], self.posture)
+            
+            if self.is_on_slope:
+                self.base_action.move([0, 0, -0.3])
+            else :
+                self.base_action.move([0, -500, 0])
             num, x, y, z, is_obtainable = self.ball_camera
 
             if num > 0:
