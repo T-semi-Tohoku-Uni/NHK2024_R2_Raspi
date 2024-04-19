@@ -111,9 +111,8 @@ class R2Controller(MainController):
         print(f"Start R2Controller main")
         try:
             while True:
-                state = self.behavior.get_state()
-
                 # Area3に行くまで画像処理をオフにする
+                state = self.behavior.get_state()
                 if state.value > BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT.value:
                     if not self.is_running:
                         # マルチスレッドの実行
@@ -126,9 +125,7 @@ class R2Controller(MainController):
                 self.lister.clear_received_data()
                 self.behavior.update_sensor_state(self.sensor_states)
                 self.behavior.action()
-                
                 time.sleep(0.01)
-
         
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
