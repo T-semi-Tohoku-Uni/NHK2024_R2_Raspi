@@ -10,6 +10,16 @@ from math import pi
 import math
 import numpy as np
 
+def convert_robot2field(pos, posture):
+    rot_matrix = np.array([[math.cos(posture), -math.sin(posture)], 
+                               [math.sin(posture), math.cos(posture)]])
+
+    p = np.array(pos[0], pos[1])
+    a = np.dot(rot_matrix, p)
+
+    return [a[0], a[1]]
+
+
 # 基本的な動作を表すクラス
 class BaseAction:
     def __init__(self):
@@ -215,6 +225,14 @@ class Behavior:
         self.base_action.move([0, 0, 0])
         exit()
 
+    def is_area3_ball(self, ball_pos):
+        ball_pos = convert_robot2field(ball_pos, self.posture, limit = 4000)
+        if ball_pos[1] < -limit or ball_pos[0] < -limit:
+            return False
+
+        else :
+            return True
+
     def calculate_position(self):
         pass
 
@@ -374,13 +392,13 @@ class Behavior:
             self.can_messages.append(self.base_action.move([0, 0, 0.3]))
             num, x, y, z, is_obtainable = self.ball_camera
 
-            if num > 0:
+            if num > 0 and self.is_area3_ball([x, y]):
                 self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
 
         # ボール回収
         elif self.state == BehaviorList.ALIVE_BALL_OBTAINIG:
             num, x, y, z, is_obtainable = self.ball_camera
-            if num > 0:
+            if num > 0 and self.is_area3_ball([x, y]):
                 pos = x - self.center_obtainable_area[0], y - self.center_obtainable_area[1], 0
                 msg = self.follow_object(pos)
 
