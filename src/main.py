@@ -76,7 +76,7 @@ class R2Controller(MainController):
     def __init__(self):
         super().__init__("tsemiR2", 11111, is_udp=False)
         self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
-                                 start_state=BehaviorList.INITIALIZED,
+                                 start_state=BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT,
                                  finish_state=BehaviorList.ALIVE_ALIGN_SILOZONE
                                  )
         
@@ -111,7 +111,6 @@ class R2Controller(MainController):
         print(f"Start R2Controller main")
         try:
             while True:
-                #出力画像は受け取らない
                 state = self.behavior.get_state()
 
                 # Area3に行くまで画像処理をオフにする
@@ -134,7 +133,7 @@ class R2Controller(MainController):
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
             self.mainprocess.finish()
-            self.behavior.shutdown()    
+            self.behavior.shutdown()
 
     def parse_from_can_message(self) -> None:
         received_datas = self.lister.get_received_datas()

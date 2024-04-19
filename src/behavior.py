@@ -8,6 +8,7 @@ from hardware_module import CANList, Sensors
 from NHK2024_Raspi_Library import LogSystem
 from math import pi
 import math
+import numpy as np
 
 # 基本的な動作を表すクラス
 class BaseAction:
@@ -36,8 +37,14 @@ class BaseAction:
         return CANList.ROBOT_VEL.value, tx_buffer
     
     def move_field(self, field_v:list, posture):
-        p = posture + pi/2
-        v = [field_v[0] * math.cos(p), field_v[1] * math.sin(p), field_v[2]]
+        p = posture
+
+        lateral_field_v = np.array([field_v[0], field_v[1]])
+        rot_matrix = np.array([[math.cos(-p), -math.sin(-p)], 
+                               [math.sin(-p), math.cos(-p)]])
+
+        np_v = np.dot(rot_matrix, lateral_field_v)
+        v = [-np_v[0], -np_v[1], field_v[2]]
         return self.move(v)
     
 
@@ -403,7 +410,7 @@ class Behavior:
             if (self.posture > pi * 0.46):
                 self.change_state(BehaviorList.ALIVE_FIND_SILOLINE)
 
-            v = [-self.max_speed, 0, pi/2 - self.posture]
+            v = [-self.max_speed, 0, (pi/2 - self.posture) * 0.4]
             self.can_messages.append(self.base_action.move_field(v, self.posture))
 
             if self.wall_sensor_state['Front right'] or self.wall_sensor_state['Front left']:
