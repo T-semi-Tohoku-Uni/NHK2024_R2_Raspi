@@ -397,10 +397,9 @@ class Behavior:
         
         elif self.state == BehaviorList.ALIVE_BALL_PICKUP_WAITING:
             self.base_action.fan.on()
-            time.sleep(0.7)
-            self.base_action.fan.on()
-            time.sleep(0.7)
+            time.sleep(4)
             self.base_action.arm.up()
+            time.sleep(1)
             self.change_state(BehaviorList.ALIVE_MOVE_TO_SILO)
         
         # サイロエリアに向かう
@@ -410,8 +409,9 @@ class Behavior:
             if (self.posture > pi * 0.46):
                 self.change_state(BehaviorList.ALIVE_FIND_SILOLINE)
 
-            v = [-self.max_speed, 0, (pi/2 - self.posture) * 0.4]
-            self.can_messages.append(self.base_action.move_field(v, self.posture))
+            gain = 1
+            v = [0, 0, (pi/2 - self.posture) * gain]
+            self.can_messages.append(self.base_action.move(v))
 
             if self.wall_sensor_state['Front right'] or self.wall_sensor_state['Front left']:
                 self.change_state(BehaviorList.FINISH)
