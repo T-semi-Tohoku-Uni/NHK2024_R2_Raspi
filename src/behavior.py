@@ -36,7 +36,8 @@ class BaseAction:
         return CANList.ROBOT_VEL.value, tx_buffer
     
     def move_field(self, field_v:list, posture):
-        v = [field_v[0] * math.cos(posture), field_v[1] * math.sin(posture), field_v[2]]
+        p = posture + pi/2
+        v = [field_v[0] * math.cos(p), field_v[1] * math.sin(p), field_v[2]]
         return self.move(v)
     
 
@@ -137,6 +138,8 @@ class Behavior:
         if self.log_system is not None:
             self.log_system.write('Change state from {} to {}'.format(self.state, state), self.main_log_file_name)
             self.log_system.write('Sensor state: {}'.format(self.sensor_state), self.main_log_file_name)
+            self.log_system.write('Change state from {} to {}'.format(self.state, state))
+            self.log_system.write('Sensor state: {}'.format(self.sensor_state))
         self.state = state
 
     def update_sensor_state(self, state: Dict):
@@ -183,7 +186,14 @@ class Behavior:
                 print("Invalid wall sensor state")
                 return False
         elif direction == Direction.LEFT:
-            pass
+            if self.wall_sensor_state['Front right'] == False and self.wall_sensor_state['Front left'] == False:
+                return self.base_action.move([0, approach_speed, 0])
+            elif self.wall_sensor_state['Front right'] == False and self.wall_sensor_state['Front left']:
+                return self.base_action.move([0, virtual_thrust_speed, -1 * align_angle_speed])
+            elif self.wall_sensor_state['Front right'] and self.wall_sensor_state['Front left'] == False:
+                return self.base_action.move([0, virtual_thrust_speed, align_angle_speed])
+            elif self.wall_sensor_state['Front right'] and self.wall_sensor_state['Front left']:
+                return self.base_action.move([0, virtual_thrust_speed, 0])
         elif direction == Direction.FRONT:
             pass
         elif direction == Direction.BACK:
@@ -379,34 +389,56 @@ class Behavior:
                 self.change_state(BehaviorList.ALIVE_BALL_PICKUP_WAITING)
         
         elif self.state == BehaviorList.ALIVE_BALL_PICKUP_WAITING:
-            time.sleep(1)
+            self.base_action.fan.on()
+            time.sleep(0.7)
+            self.base_action.fan.on()
+            time.sleep(0.7)
+            self.base_action.arm.up()
             self.change_state(BehaviorList.ALIVE_MOVE_TO_SILO)
         
-        # サイロエリアのラインを探す
-        elif self.state == BehaviorList.ALIVE_FIND_SILOLINE:
-            if self.line_camera[0] and (self.posture > pi * 1/4 or self.posture < pi * 3 / 4):
-                self.change_state(BehaviorList.ALIVE_FOLLOW_SILOLINE)
+        # サイロエリアに向かう
+        elif self.state == BehaviorList.ALIVE_MOVE_TO_SILO:
+            self.base_action.fan.on()
+            # 90度の方を向いたら
+            if (self.posture > pi * 0.46):
+                self.change_state(BehaviorList.ALIVE_FIND_SILOLINE)
 
             v = [-self.max_speed, 0, pi/2 - self.posture]
-            self.can_messages.append(self.base_action.move_field(v))
+            self.can_messages.append(self.base_action.move_field(v, self.posture))
 
             if self.wall_sensor_state['Front right'] or self.wall_sensor_state['Front left']:
                 self.change_state(BehaviorList.FINISH)
                 
-            
+        # ラインを見つける
+        elif self.state == BehaviorList.ALIVE_FIND_SILOLINE:
+            self.base_action.fan.on()
+            vertical, right, left, error, angle_error = self.line_camera
+            rad = pi / 2 - self.posture
+         
+            if vertical:
+                self.change_state(BehaviorList.ALIVE_FOLLOW_SILOLINE)
+            else:
+                # ラインが無いときは前進
+                self.base_action.move([0, self.max_speed/2, rad * 0.3])
+         
         elif self.state == BehaviorList.ALIVE_FOLLOW_SILOLINE:
-            vertical, right, left, error = self.line_camera
+            self.base_action.fan.on()
+            vertical, right, left, lateral_error, angle_error = self.line_camera
             # 縦ラインに追従
             if vertical:
-                self.can_messages.append(self.follow_object([error, 500, 0], gain=(0.5, 1, 0)))
-                if self.wall_sensor_state['Front right'] or self.wall_sensor_state['Front left']:
-                    self.change_state(BehaviorList.ALIVE_AILGN_SILOZONE)
+                self.follow_object([lateral_error, 400, angle_error], gain=(0.5, 1, 0.2))                
             
             # ラインがなかったら探しに行く
             else :
-                self.change_state(BehaviorList.ALIVE_FIND_SILOLINE)
+                rad = pi/2 - self.posture
+                # self.change_state(BehaviorList.ALIVE_FIND_SILOLINE)   
+                self.base_action.move([0, self.max_speed/2, rad * 0.3])
 
+            if self.wall_sensor_state['Front right'] or self.wall_sensor_state['Front left']:
+                self.change_state(BehaviorList.ALIVE_ALIGN_SILOZONE)
+                
         elif self.state == BehaviorList.ALIVE_ALIGN_SILOZONE:
+            self.base_action.fan.on()
             self.can_messages.append(self.move_along_wall(Direction.FRONT))
             if self.wall_sensor_state['Front right'] and self.wall_sensor_state['Front left']:
                 self.change_state(BehaviorList.ALIVE_PUTIN)
@@ -419,6 +451,7 @@ class Behavior:
                 self.change_state(BehaviorList.FINISH)
 
         elif self.state == BehaviorList.ALIVE_PUTIN_WAIT:
+            self.base_action.fan.off()
             time.sleep(1)
             self.change_state(BehaviorList.ALIVE_MOVE_TO_STORAGE)
         
