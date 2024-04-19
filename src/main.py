@@ -1,6 +1,5 @@
 from NHK2024_Raspi_Library import MainController, TwoStateButtonHandler, TwoStateButton
-from NHK2024_Camera_Library import UpperCamera,LowerCamera,RearCamera,MainProcess,OBTAINABE_AREA_CENTER_X,OBTAINABE_AREA_CENTER_Y
-
+from NHK2024_Camera_Library import MainProcess, OUTPUT_ID, LINE_SLOPE_THRESHOLD, OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y
 import json
 from typing import Dict, Callable
 from enum import Enum
@@ -9,7 +8,7 @@ import can
 import time
 
 from behavior import Direction, Field, Behavior, BehaviorList
-from hardware_module import CANList
+from hardware_module import CANList,Sensors
     
 
 class ClientData:
@@ -76,7 +75,10 @@ class CANMessageLister(can.Listener):
 class R2Controller(MainController):
     def __init__(self):
         super().__init__("tsemiR2", 11111, is_udp=False)
-        self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y))
+        self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
+                                 start_state=BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT,
+                                 finish_state=BehaviorList.ALIVE_ALIGN_SILOZONE
+                                 )
         
         # init can message lister
         self.lister = CANMessageLister()
@@ -85,20 +87,23 @@ class R2Controller(MainController):
         self.init_can_notifier(lister=self.lister)
 
         self.behavior.init_log_system(self.log_system)
+        self.behavior.init_write_can_bus(self.write_can_bus)
 
-        UpperCam = UpperCamera(0)
-        LowerCam = LowerCamera(2)
-        RearCam = LowerCamera(2)
-        
-        self.MainProcess = MainProcess('/home/pi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/20240109best.pt',UpperCam,LowerCam,RearCam)
-        self.MainProcess.thread_start()
+        # 物体検出モデルのパス
+        model_path = 'src/NHK2024_Camera_Library/models/20240109best.pt'
+
+        # メインプロセスを実行するクラス
+        self.mainprocess = MainProcess(model_path)
+
+        self.is_running = False
 
         self.sensor_states = {
-                'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
-                'is_on_slope': False,
-                'ball_camera': (0, 0, 0, 600, False),
-                'robot_vel': [0, 0, 0],
-                'posture': 0
+                Sensors.WALL_SENSOR: {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
+                Sensors.IS_ON_SLOPE: False,
+                Sensors.BALL_CAMERA: (0, 0, 0, 600, False),
+                Sensors.LINE_CAMERA: (False, False, False, 0),
+                Sensors.ROBOT_VEL: [0, 0, 0],
+                Sensors.POSTURE: 0
             }
     
     def main(self):
@@ -106,35 +111,26 @@ class R2Controller(MainController):
         print(f"Start R2Controller main")
         try:
             while True:
-                # 出力画像は受け取らない
-                #frame, id, output_data = self.MainProcess.q_frames_list[-1].get()
-                #if id == 1:
-                #    self.sensor_states['ball_camera'] = output_data
-                self.sensor_states['ball_camera'] = (0, 0, 0, 600, False)
-                
-                #テスト用
-                '''
-                if not self.behavior.get_state == BehaviorList.ALIVE_BALL_OBTAINIG:
-                    self.behavior.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
-                '''
+                # Area3に行くまで画像処理をオフにする
+                state = self.behavior.get_state()
+                if state.value > BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT.value:
+                    if not self.is_running:
+                        # マルチスレッドの実行
+                        self.mainprocess.thread_start()
+                        self.is_running = True
+                    self.sensor_states[Sensors.BALL_CAMERA] = self.mainprocess.update_ball_camera_out()
+                    self.sensor_states[Sensors.LINE_CAMERA] = self.mainprocess.update_line_camera_out()
 
                 self.parse_from_can_message()
                 self.lister.clear_received_data()
                 self.behavior.update_sensor_state(self.sensor_states)
-                
-
-                commands = self.behavior.action()
-                
-                for c in commands:
-                    self.write_can_bus(c[0], c[1])
-
+                self.behavior.action()
                 time.sleep(0.01)
-
         
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
-            self.MainProcess.finish()
-            self.behavior.shutdown()    
+            self.mainprocess.finish()
+            self.behavior.shutdown()
 
     def parse_from_can_message(self) -> None:
         received_datas = self.lister.get_received_datas()
@@ -150,14 +146,14 @@ class R2Controller(MainController):
                     "Left rear": not(bool(data.data[0] & 0x04))
                     }
 
-                self.sensor_states['wall_sensor'] = wall_detection_state
+                self.sensor_states[Sensors.WALL_SENSOR] = wall_detection_state
 
             elif can_id == CANList.SLOPE_DETECTION.value:
-                self.sensor_states['is_on_slope'] = bool(data.data[0])
+                self.sensor_states[Sensors.IS_ON_SLOPE] = bool(data.data[0])
 
             elif can_id == CANList.ROBOT_VEL_FB.value:
-                self.sensor_states['robot_vel'] = [(data.data[0] - 127) * 16, (data.data[1] - 127) * 16, (data.data[2] - 127) * 0.02]
-                self.sensor_states['posture'] = (data.data[3] - 127) / 40
+                self.sensor_states[Sensors.ROBOT_VEL] = [(data.data[0] - 127) * 16, (data.data[1] - 127) * 16, (data.data[2] - 127) * 0.02]
+                self.sensor_states[Sensors.POSTURE] = (data.data[3] - 127) / 40
                 # print('posture:', self.sensor_states['posture'])
     
 if __name__ == "__main__":
