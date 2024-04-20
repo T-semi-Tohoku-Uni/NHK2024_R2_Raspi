@@ -373,7 +373,7 @@ class Behavior:
 
             if num > 0:
                 self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
-            elif self.posture < pi*0.2:
+            elif self.posture < pi*0.2 and self.posture > -pi*0.2:
                 self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CW)
 
         elif self.state == BehaviorList.ALIVE_BALL_SEARCH_CW:
@@ -382,7 +382,7 @@ class Behavior:
 
             if num > 0:
                 self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
-            elif self.posture > pi * 0.8:
+            elif self.posture > pi * 0.8 or self.posture < -pi * 0.8:
                 self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
 
         # ボール回収
@@ -418,15 +418,15 @@ class Behavior:
             gain = 0.3
             v = [0, 0, (pi/2 - self.posture) * gain]
             self.base_action.move(v)
-
-            if self.wall_sensor_state['Front right'] or self.wall_sensor_state['Front left']:
-                self.change_state(BehaviorList.FINISH)
                 
         # ラインを見つける
         elif self.state == BehaviorList.ALIVE_FIND_SILOLINE:
             self.base_action.fan.on()
             vertical, right, left, error, angle_error = self.line_camera
             rad = pi / 2 - self.posture
+
+            if self.wall_sensor_state['Front right'] or self.wall_sensor_state['Front left']:
+                self.change_state(BehaviorList.FINISH)
          
             if vertical:
                 self.change_state(BehaviorList.ALIVE_FOLLOW_SILOLINE)
@@ -437,16 +437,16 @@ class Behavior:
         elif self.state == BehaviorList.ALIVE_FOLLOW_SILOLINE:
             self.base_action.fan.on()
             vertical, right, left, lateral_error, angle_error = self.line_camera
+            rad = pi/2 - self.posture
             # 縦ラインに追従
             if vertical:
-                self.follow_object([lateral_error, 300, angle_error], gain=(0.2, 1, 0.2))                
+                self.follow_object([lateral_error, 300, rad], gain=(0.2, 1, 0.15))                
             
             # ラインがなかったら探しに行く
             else :
-                rad = pi/2 - self.posture
                 # self.change_state(BehaviorList.ALIVE_FIND_SILOLINE)   
-                # self.base_action.move([0, self.max_speed/2, rad * 0.3])
-                self.base_action.move([0, self.max_speed/2, 0])
+                self.base_action.move([0, 300, rad * 0.15])
+                # self.base_action.move([0, self.max_speed/2, 0])
 
             if self.wall_sensor_state['Front right'] or self.wall_sensor_state['Front left']:
                 self.change_state(BehaviorList.ALIVE_ALIGN_SILOZONE)
@@ -471,15 +471,13 @@ class Behavior:
             self.change_state(BehaviorList.ALIVE_MOVE_TO_STORAGE)
         
         elif self.state == BehaviorList.ALIVE_MOVE_TO_STORAGE:
-            
+            num, x, y, z, is_obtainable = self.ball_camera
             if self.is_on_slope:
                 self.base_action.move([0, 0, -0.3])
+                if num > 0:
+                    self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
             else :
-                self.base_action.move([0, -500, 0])
-            num, x, y, z, is_obtainable = self.ball_camera
-
-            if num > 0:
-                self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
+                self.base_action.move([0, -600, 0])
 
             if self.posture < - pi / 2 :
                 self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
