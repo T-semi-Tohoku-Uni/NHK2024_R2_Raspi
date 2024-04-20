@@ -120,7 +120,7 @@ class Behavior:
 
         self.center_obtainable_area = center_obtainable_area
 
-        self.max_speed = 300
+        self.max_speed = 800
         self.position = [0, 0, 0]
         self.stored_balls = 0
 
@@ -266,7 +266,7 @@ class Behavior:
         #エリア２のスロープから水ゾーンの壁への遷移
         #半径2500mmの円を描いて方向転換
         elif self.state == BehaviorList.ALIVE_AREA2_OUTER_WALL:
-            radius = 2500
+            radius = 2800
             sign = 1
             if self.field == Field.BLUE:
                 sign = 1
@@ -283,9 +283,9 @@ class Behavior:
 
         #水ゾーンの壁に伝って進む
         elif self.state == BehaviorList.ALIVE_AREA2_WATER_WALL:
-            self.max_speed = 0
+            self.max_speed = 100
             if self.field == Field.BLUE:
-                self.can_messages.append(self.move_along_wall(Direction.RIGHT, approach_speed=300))
+                self.can_messages.append(self.move_along_wall(Direction.RIGHT, approach_speed=400))
             elif self.field == Field.RED:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
 
@@ -294,7 +294,7 @@ class Behavior:
                 self.change_state(BehaviorList.ALIVE_AREA2_ON_WATER_WALL)
 
         elif self.state == BehaviorList.ALIVE_AREA2_ON_WATER_WALL:
-            self.max_speed = 500
+            self.max_speed = 800
             if self.field == Field.BLUE:
                 self.can_messages.append(self.move_along_wall(Direction.RIGHT))
             elif self.field == Field.RED:
@@ -305,7 +305,7 @@ class Behavior:
 
         elif self.state == BehaviorList.ALIVE_APPROACH_SLOPE23_ROTATE:
             self.max_speed = 300
-            radius = 300
+            radius = 500
             sign = -1
             if self.field == Field.BLUE:
                 sign = -1
@@ -314,7 +314,7 @@ class Behavior:
             v = [0, self.max_speed, sign * self.max_speed / radius]
 
             #機体が横向きになったら次の状態へ
-            if self.posture < 0:
+            if self.posture < 0.1:
                 self.change_state(BehaviorList.ALIVE_APPROACH_SLOPE23)
 
             self.can_messages.append(self.base_action.move(v))
@@ -336,7 +336,7 @@ class Behavior:
         
         #半径2000の円を描きながら適当に真ん中あたりに行く
         elif self.state == BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT:
-            radius = 2300
+            radius = 2000
             self.max_speed = 500
             sign = -1
             if self.field == Field.BLUE:
@@ -474,14 +474,13 @@ class Behavior:
             num, x, y, z, is_obtainable = self.ball_camera
             if self.is_on_slope:
                 self.base_action.move([0, 0, -0.3])
+                if self.posture < - pi / 2 and self.posture > -3 * pi / 4:
+                    self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
+                    
                 if num > 0:
                     self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
             else :
                 self.base_action.move([0, -600, 0])
-
-            if self.posture < - pi / 2 :
-                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
-
         
         elif self.state == BehaviorList.FINISH:
             self.shutdown()
