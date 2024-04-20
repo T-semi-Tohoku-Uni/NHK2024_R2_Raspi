@@ -77,7 +77,7 @@ class R2Controller(MainController):
         super().__init__("tsemiR2", 11111, is_udp=False)
         self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
                                  start_state=BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT,
-                                 finish_state=BehaviorList.ALIVE_PUTIN_WAIT
+                                #  finish_state=BehaviorList.ALIVE_PUTIN_WAIT
                                  )
         
         # init can message lister
@@ -126,7 +126,7 @@ class R2Controller(MainController):
                 self.behavior.update_sensor_state(self.sensor_states)
                 self.behavior.action()
                 time.sleep(0.01)
-        
+
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
             self.mainprocess.finish()

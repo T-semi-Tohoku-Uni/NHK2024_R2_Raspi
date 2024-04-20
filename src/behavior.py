@@ -404,7 +404,7 @@ class Behavior:
             if (self.posture > pi * 0.46):
                 self.change_state(BehaviorList.ALIVE_FIND_SILOLINE)
 
-            gain = 0.2
+            gain = 0.3
             v = [0, 0, (pi/2 - self.posture) * gain]
             self.base_action.move(v)
 
@@ -422,19 +422,20 @@ class Behavior:
             else:
                 # ラインが無いときは前進
                 self.base_action.move([0, self.max_speed/2, rad * 0.3])
-         
+        
         elif self.state == BehaviorList.ALIVE_FOLLOW_SILOLINE:
             self.base_action.fan.on()
             vertical, right, left, lateral_error, angle_error = self.line_camera
             # 縦ラインに追従
             if vertical:
-                self.follow_object([lateral_error, 400, angle_error], gain=(0.5, 1, 0.25))                
+                self.follow_object([lateral_error, 300, angle_error], gain=(0.2, 1, 0.2))                
             
             # ラインがなかったら探しに行く
             else :
                 rad = pi/2 - self.posture
                 # self.change_state(BehaviorList.ALIVE_FIND_SILOLINE)   
-                self.base_action.move([0, self.max_speed/2, rad * 0.3])
+                # self.base_action.move([0, self.max_speed/2, rad * 0.3])
+                self.base_action.move([0, self.max_speed/2, 0])
 
             if self.wall_sensor_state['Front right'] or self.wall_sensor_state['Front left']:
                 self.change_state(BehaviorList.ALIVE_ALIGN_SILOZONE)
