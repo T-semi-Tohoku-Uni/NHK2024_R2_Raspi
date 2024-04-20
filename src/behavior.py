@@ -70,8 +70,8 @@ class BehaviorList(Enum):
     ALIVE_SLOPE23 = 80
     ALIVE_AREA3_FIRST_ATTEMPT = 90
     ALIVE_AREA3_FOLLOW_STRAGE_CENTERLINE = 95
-    ALIVE_BALL_SEARCH_WIDE = 100
-    ALIVE_BALL_SEARCH_NARROW = 110
+    ALIVE_BALL_SEARCH_CCW = 100
+    ALIVE_BALL_SEARCH_CW = 110
     ALIVE_BALL_OBTAINIG = 120
     ALIVE_BALL_PICKUP_WAITING = 121
     ALIVE_FIND_SILOLINE = 130
@@ -355,7 +355,7 @@ class Behavior:
             #     self.change_state(BehaviorList.ALIVE_AREA3_FOLLOW_STRAGE_CENTERLINE)
 
             elif self.posture < -pi/2:
-                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_WIDE)
+                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
 
         # ストレージエリアのライン追従
         elif self.state == BehaviorList.ALIVE_AREA3_FOLLOW_STRAGE_CENTERLINE:
@@ -367,12 +367,23 @@ class Behavior:
                 self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
         
         # ボール探し
-        elif self.state == BehaviorList.ALIVE_BALL_SEARCH_WIDE:
-            self.can_messages.append(self.base_action.move([0, 0, 0.3]))
+        elif self.state == BehaviorList.ALIVE_BALL_SEARCH_CCW:
+            self.base_action.move([0, 50, 0.3])
             num, x, y, z, is_obtainable = self.ball_camera
 
             if num > 0:
                 self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
+            elif self.posture < pi*0.2:
+                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CW)
+
+        elif self.state == BehaviorList.ALIVE_BALL_SEARCH_CW:
+            self.base_action.move([0, 50, -0.3])
+            num, x, y, z, is_obtainable = self.ball_camera
+
+            if num > 0:
+                self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
+            elif self.posture > pi * 0.8:
+                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
 
         # ボール回収
         elif self.state == BehaviorList.ALIVE_BALL_OBTAINIG:
@@ -382,7 +393,7 @@ class Behavior:
                 self.follow_object(pos, gain=(0.5, 0.5, 0))
             
             elif num == 0:
-                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_WIDE)
+                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
 
             if is_obtainable:                
                 self.base_action.move([0, 0, 0])
@@ -471,7 +482,7 @@ class Behavior:
                 self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
 
             if self.posture < - pi / 2 :
-                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_WIDE)
+                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
 
         
         elif self.state == BehaviorList.FINISH:
