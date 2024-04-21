@@ -82,6 +82,7 @@ class BehaviorList(Enum):
     ALIVE_PUTIN = 170
     ALIVE_PUTIN_WAIT = 171
     ALIVE_MOVE_TO_STORAGE = 180
+    ALIVE_ARRIVE_AT_STORAGE = 190
     FINISH = 1000
 
 
@@ -412,10 +413,10 @@ class Behavior:
         elif self.state == BehaviorList.ALIVE_MOVE_TO_SILO:
             self.base_action.fan.on()
             # 90度の方を向いたら
-            if (self.posture > pi * 0.46):
+            if (self.posture > pi * 0.35 and self.posture<pi*0.65):
                 self.change_state(BehaviorList.ALIVE_FIND_SILOLINE)
 
-            gain = 0.3
+            gain = 0.4
             v = [0, 0, (pi/2 - self.posture) * gain]
             self.base_action.move(v)
                 
@@ -440,7 +441,7 @@ class Behavior:
             rad = pi/2 - self.posture
             # 縦ラインに追従
             if vertical:
-                self.follow_object([lateral_error, 300, rad], gain=(0.2, 1, 0.15))                
+                self.follow_object([lateral_error, 300, rad], gain=(0.5, 1, 0.15))                
             
             # ラインがなかったら探しに行く
             else :
@@ -453,7 +454,7 @@ class Behavior:
                 
         elif self.state == BehaviorList.ALIVE_ALIGN_SILOZONE:
             self.base_action.fan.on()
-            self.can_messages.append(self.move_along_wall(Direction.FRONT))
+            self.move_along_wall(Direction.FRONT)
             if self.wall_sensor_state['Front right'] and self.wall_sensor_state['Front left']:
                 self.change_state(BehaviorList.ALIVE_PUTIN)
 
@@ -462,7 +463,7 @@ class Behavior:
             self.can_messages.append(self.base_action.fan.off())
             self.stored_balls = self.stored_balls + 1
             self.change_state(BehaviorList.ALIVE_PUTIN_WAIT)
-            if self.stored_balls > 6:
+            if self.stored_balls > 20:
                 self.change_state(BehaviorList.FINISH)
 
         elif self.state == BehaviorList.ALIVE_PUTIN_WAIT:
@@ -471,16 +472,17 @@ class Behavior:
             self.change_state(BehaviorList.ALIVE_MOVE_TO_STORAGE)
         
         elif self.state == BehaviorList.ALIVE_MOVE_TO_STORAGE:
-            num, x, y, z, is_obtainable = self.ball_camera
             if self.is_on_slope:
-                self.base_action.move([0, 0, -0.3])
-                if self.posture < - pi / 2 and self.posture > -3 * pi / 4:
-                    self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
-                    
-                if num > 0:
-                    self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
+                self.change_state(BehaviorList.ALIVE_ARRIVE_AT_STORAGE)
             else :
                 self.base_action.move([0, -600, 0])
+        elif self.state == BehaviorList.ALIVE_ARRIVE_AT_STORAGE:
+            num, x, y, z, is_obtainable = self.ball_camera
+            self.base_action.move([0, 0, -0.5])
+            if self.posture < - pi / 4 and self.posture > -3 * pi / 4:
+                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
+                
+            
         
         elif self.state == BehaviorList.FINISH:
             self.shutdown()
