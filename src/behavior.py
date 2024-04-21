@@ -479,7 +479,7 @@ class Behavior:
         elif self.state == BehaviorList.ALIVE_ARRIVE_AT_STORAGE:
             num, x, y, z, is_obtainable = self.ball_camera
             self.base_action.move([0, 0, -0.5])
-            if self.posture < - pi / 4 and self.posture > -3 * pi / 4:
+            if self.posture < 0 and self.posture > -7 * pi / 8:
                 self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
                 
             
