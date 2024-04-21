@@ -76,7 +76,7 @@ class R2Controller(MainController):
     def __init__(self):
         super().__init__("tsemiR2", 11111, is_udp=False)
         self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
-                                 start_state=BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT,
+                                  start_state=BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT,
                                 #  finish_state=BehaviorList.ALIVE_PUTIN_WAIT
                                  )
         
@@ -113,7 +113,7 @@ class R2Controller(MainController):
             while True:
                 # Area3に行くまで画像処理をオフにする
                 state = self.behavior.get_state()
-                if state.value > BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT.value:
+                if state.value >= BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT.value:
                     if not self.is_running:
                         # マルチスレッドの実行
                         self.mainprocess.thread_start()
