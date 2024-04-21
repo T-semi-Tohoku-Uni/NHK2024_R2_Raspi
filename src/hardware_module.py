@@ -86,6 +86,7 @@ class Arm(HWBaseModule):
 
 class VacuumFan(HWBaseModule):
     class VacuumFanState(Enum):
+        HOLD = 2
         ON = 1
         OFF = 0
 
@@ -93,6 +94,11 @@ class VacuumFan(HWBaseModule):
         super().__init__(CANList.VACUUM_FAN.value, None, CANList.EMERGENCY.value)
 
         self.state = None
+
+    def hold(self):
+        self.state = self.VacuumFanState.HOLD
+        self.write_can_bus(self.can_id, bytearray([self.VacuumFanState.HOLD.value]))
+        return self.can_id, bytearray([self.VacuumFanState.HOLD.value])
 
     def on(self):
         self.state = self.VacuumFanState.ON
