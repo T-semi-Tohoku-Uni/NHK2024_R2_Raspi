@@ -2,12 +2,20 @@ import can
 from enum import Enum
 
 
+class Field(Enum):
+    BLUE = 1
+    RED = -1
+
+
 class CANList(Enum):
     EMERGENCY = 0x000
     BATTERY_ERROR = 0x001
 
+    START = 0x80
+
     VACUUM_FAN = 0x100
     ARM = 0x101
+    CAM_ARM = 0x102
     ROBOT_VEL = 0x106
 
     SLOPE_DETECTION = 0x203
@@ -23,8 +31,10 @@ class Sensors(Enum):
     IS_ON_SLOPE = 'is_on_slope'
     BALL_CAMERA = 'ball_camera'
     LINE_CAMERA = 'line_camera'
+    SILO_CAMERA = 'silo_camera'
     ROBOT_VEL = 'robot_vel'
     POSTURE = 'posture'
+    UI_BUTTONS = 'buttons'
         
 """
 'wall_sensor': {"Right rear": False, "Right front": False, "Front right": False, "Front left": False, "Left front": False, "Left rear": False},
@@ -79,6 +89,30 @@ class Arm(HWBaseModule):
         self.state = self.ArmState.DOWN
         self.write_can_bus(self.can_id, bytearray([self.ArmState.DOWN.value]))
         return self.can_id, bytearray([self.ArmState.DOWN.value])
+
+    def get_state(self):
+        return self.base_state, self.state
+    
+
+class CamArm(HWBaseModule):
+    class CamArmState(Enum):
+        UP = 1
+        DOWN = 0
+
+    def __init__(self):
+        super().__init__(CANList.CAM_ARM.value, None, CANList.EMERGENCY.value)
+
+        self.state = None
+
+    def up(self):
+        self.state = self.CamArmState.UP
+        self.write_can_bus(self.can_id, bytearray([self.CamArmState.UP.value]))
+        return self.can_id, bytearray([self.CamArmState.UP.value])
+
+    def down(self):
+        self.state = self.CamArmState.DOWN
+        self.write_can_bus(self.can_id, bytearray([self.CamArmState.DOWN.value]))
+        return self.can_id, bytearray([self.CamArmState.DOWN.value])
 
     def get_state(self):
         return self.base_state, self.state

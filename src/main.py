@@ -4,6 +4,7 @@ import json
 from typing import Dict, Callable
 from enum import Enum
 import can
+import cv2
 
 import time
 
@@ -67,7 +68,7 @@ class CANMessageLister(can.Listener):
 
         self.store_received_data(msg)
 
-        self.write(f"Received: {msg.__str__()}")
+        # self.write(f"Received: {msg.__str__()}")
         self.update_received_can_log(msg)
         #print(f"Received: {msg.__str__()}")
 
@@ -75,9 +76,9 @@ class CANMessageLister(can.Listener):
 class R2Controller(MainController):
     def __init__(self):
         super().__init__("tsemiR2", 11111, is_udp=False)
-        self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
-                                #  start_state=BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT,
-                                #  finish_state=BehaviorList.ALIVE_PUTIN_WAIT
+        self.behavior = Behavior(Field.RED, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
+                                 start_state=BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT,
+                                 finish_state=BehaviorList.ALIVE_PUTIN_WAIT
                                  )
         
         # init can message lister
@@ -89,12 +90,6 @@ class R2Controller(MainController):
         self.behavior.init_log_system(self.log_system)
         self.behavior.init_write_can_bus(self.write_can_bus)
 
-        # 物体検出モデルのパス
-        model_path = 'src/NHK2024_Camera_Library/models/20240109best.pt'
-
-        # メインプロセスを実行するクラス
-        self.mainprocess = MainProcess(model_path)
-
         self.is_running = False
 
         self.sensor_states = {
@@ -102,30 +97,64 @@ class R2Controller(MainController):
                 Sensors.IS_ON_SLOPE: False,
                 Sensors.BALL_CAMERA: (0, 0, 0, 600, False),
                 Sensors.LINE_CAMERA: (False, False, False, 0),
+                Sensors.SILO_CAMERA: (0, 0, 0, 0, 0),
                 Sensors.ROBOT_VEL: [0, 0, 0],
-                Sensors.POSTURE: 0
+                Sensors.POSTURE: 0,
+                Sensors.UI_BUTTONS: 0
             }
+        
+        
+        red_model_path = '/home/tsemi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/NHK2024_red_ball_model/red_ball_model.pt'
+        silo_model_path = '/home/tsemi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/NHK2024_silo_model/silo_model.pt'
+        
+        # メインプロセスを実行するクラス
+        print("create main instance")
+        self.mainprocess = MainProcess(
+            ball_model_path=red_model_path, 
+            silo_model_path=silo_model_path,
+            show=True
+        )
+        
+        # マルチスレッドの実行
+        print("start thread")
+        self.mainprocess.thread_start()
+        print("complete start thread")
     
     def main(self):
         self.log_system.write(f"Start R2Controller main")
         print(f"Start R2Controller main")
+        
         try:
             while True:
                 # Area3に行くまで画像処理をオフにする
-                state = self.behavior.get_state()
-                if state.value >= BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT.value:
-                    if not self.is_running:
-                        # マルチスレッドの実行
-                        self.mainprocess.thread_start()
-                        self.is_running = True
-                    self.sensor_states[Sensors.BALL_CAMERA] = self.mainprocess.update_ball_camera_out()
-                    self.sensor_states[Sensors.LINE_CAMERA] = self.mainprocess.update_line_camera_out()
-
+                # state = self.behavior.get_state()
+                # if state.value >= BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT.value:
+                #     if not self.is_running:
+                #         # マルチスレッドの実行
+                #         self.mainprocess.thread_start()
+                #         self.is_running = True
+                #     self.sensor_states[Sensors.BALL_CAMERA] = self.mainprocess.update_ball_camera_out()
+                #     self.sensor_states[Sensors.LINE_CAMERA] = self.mainprocess.update_line_camera_out()
+                self.sensor_states[Sensors.BALL_CAMERA] = self.mainprocess.update_ball_camera_out()
+                self.sensor_states[Sensors.LINE_CAMERA] = self.mainprocess.update_line_camera_out()
+                self.sensor_states[Sensors.SILO_CAMERA] = self.mainprocess.update_silo_camera_out()
+                # print(self.sensor_states[Sensors.BALL_CAMERA])
+                # print(self.sensor_states[Sensors.SILO_CAMERA])
+                frame, id = self.mainprocess.q_out.get() 
+                # # 画面表示用
+                # cv2.imshow(f'{id}', frame)
+                # key = cv2.waitKey(1)
+                # if key == ord("q"):
+                #     break
+                # # ここまで
+                
+                # print(f"hello {self.mainprocess.update_ball_camera_out()}")
                 self.parse_from_can_message()
                 self.lister.clear_received_data()
                 self.behavior.update_sensor_state(self.sensor_states)
                 self.behavior.action()
                 time.sleep(0.01)
+                continue
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
@@ -155,6 +184,8 @@ class R2Controller(MainController):
                 self.sensor_states[Sensors.ROBOT_VEL] = [(data.data[0] - 127) * 16, (data.data[1] - 127) * 16, (data.data[2] - 127) * 0.02]
                 self.sensor_states[Sensors.POSTURE] = (data.data[3] - 127) / 40
                 # print('posture:', self.sensor_states['posture'])
+            elif can_id == CANList.START.value:
+                self.sensor_states[Sensors.UI_BUTTONS] = data.data[0]
     
 if __name__ == "__main__":
     controller = R2Controller()

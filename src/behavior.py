@@ -4,7 +4,7 @@ import enum
 from enum import Enum
 from typing import Dict, List
 import hardware_module
-from hardware_module import CANList, Sensors
+from hardware_module import CANList, Sensors, Field
 from NHK2024_Raspi_Library import LogSystem
 from math import pi
 import math
@@ -15,12 +15,14 @@ class BaseAction:
     def __init__(self):
         self.arm = hardware_module.Arm()
         self.fan = hardware_module.VacuumFan()
+        self.cam_arm = hardware_module.CamArm()
         pass
 
     def init_write_can_bus_func(self, write_can_bus):
         self.write_can_bus = write_can_bus
         self.arm.init_write_can_bus_func(write_can_bus)
         self.fan.init_write_can_bus_func(write_can_bus)
+        self.cam_arm.init_write_can_bus_func(write_can_bus)
 
     def move(self, v:List, is_field = False):
         gain = [1/16, 1/16, 50]
@@ -49,11 +51,6 @@ class Direction(Enum):
     FRONT = 1
     LEFT = 2
     BACK = 3
-
-
-class Field(Enum):
-    BLUE = 0
-    RED = 1
 
 
 class BehaviorList(Enum):
@@ -91,7 +88,7 @@ class Behavior:
     def __init__(self, field: Field, 
                  center_obtainable_area, 
                  enable_log=True, 
-                 start_state: BehaviorList = BehaviorList.INITIALIZED, 
+                 start_state: BehaviorList = BehaviorList.ALIVE_AREA1, 
                  finish_state: BehaviorList = BehaviorList.FINISH
                  ):
         
@@ -115,11 +112,12 @@ class Behavior:
 
         self.sensor_state: Dict = {}
         self.is_on_slope = False
+        self.ui_buttons = 0
         self.posture = 0
         self.robot_vel = [0, 0, 0]
         self.ball_camera = ()
         self.line_camera = ()
-
+        self.silo_camera = ()
         self.center_obtainable_area = center_obtainable_area
 
         self.max_speed = 800
@@ -155,6 +153,9 @@ class Behavior:
         self.line_camera = state[Sensors.LINE_CAMERA]
         self.posture = state[Sensors.POSTURE]
         self.robot_vel = state[Sensors.ROBOT_VEL]
+        self.ui_buttons = state[Sensors.UI_BUTTONS]
+        self.silo_camera = state[Sensors.SILO_CAMERA]
+        
 
         self.log_system.write('Update sensor state: {}'.format(self.sensor_state), self.main_log_file_name)
 
@@ -162,11 +163,11 @@ class Behavior:
         return self.state
 
     def follow_object(self, object_pos_error):
-        gain = [2, 2, 0]
+        gain = [2, 2, 0.3]
         v = [0, 0, 0]
         for i in range(3):
             v[i] = gain[i] * object_pos_error[i]
-        return self.base_action.move(v)
+        return self.base_action.move(v, False)
 
 
     def move_along_wall(self, direction: Direction, move_direction: bool = True, approach_speed = 300):
@@ -191,6 +192,17 @@ class Behavior:
                 print("Invalid wall sensor state")
                 return False
         elif direction == Direction.LEFT:
+            if self.wall_sensor_state['Left front'] == False and self.wall_sensor_state['Left rear'] == False:
+                return self.base_action.move([-approach_speed, self.max_speed, 0])
+            elif self.wall_sensor_state['Left front'] == False and self.wall_sensor_state['Left rear'] == True:
+                return self.base_action.move([-virtual_thrust_speed, self.max_speed, -1 * align_angle_speed])
+            elif self.wall_sensor_state['Left front'] == True and self.wall_sensor_state['Left rear'] == False:
+                return self.base_action.move([-virtual_thrust_speed, self.max_speed, align_angle_speed])
+            elif self.wall_sensor_state['Left front'] == True and self.wall_sensor_state['Left rear'] == True:
+                return self.base_action.move([-virtual_thrust_speed, self.max_speed, 0])
+            else:
+                print("Invalid wall sensor state")
+                return False
             pass
         elif direction == Direction.FRONT:
             if self.wall_sensor_state['Front right'] == False and self.wall_sensor_state['Front left'] == False:
@@ -208,7 +220,8 @@ class Behavior:
     def shutdown(self):
         self.log_system.write('Call shutdown function')
         print('Call shutdown function')
-        self.change_state(BehaviorList.FINISH)
+        if self.get_state() != BehaviorList.FINISH:
+            self.change_state(BehaviorList.FINISH)
         self.base_action.fan.off()
         self.base_action.arm.up()
         self.base_action.move([0, 0, 0])
@@ -228,22 +241,28 @@ class Behavior:
         return self.base_action.move(v)
 
     def action(self):
-        if self.state == self.finish_state:
+        if self.state == self.finish_state or (self.ui_buttons == 0 and self.get_state().value>BehaviorList.ALIVE_AREA1.value):
             self.state = BehaviorList.FINISH
+            
 
         self.can_messages.clear()
         if self.state == BehaviorList.INITIALIZING:
-            self.can_messages.append(self.base_action.fan.off())
-            self.can_messages.append(self.base_action.arm.up())
-            self.change_state(self.start_state)
+            self.base_action.fan.off()
+            self.base_action.arm.up()
+            self.base_action.cam_arm.down()
+            self.change_state(BehaviorList.INITIALIZED)
 
         elif self.state == BehaviorList.INITIALIZED:
+            self.base_action.cam_arm.up()
             time.sleep(1)
+            self.base_action.cam_arm.up()
             self.change_state(BehaviorList.START_READY)
 
         #スタート準備OK
         elif self.state == BehaviorList.START_READY:
-            self.change_state(BehaviorList.ALIVE_AREA1)
+            if self.ui_buttons == 1:
+                self.base_action.cam_arm.up()
+                self.change_state(self.start_state)
 
         #エリア１の壁に沿って進む
         elif self.state == BehaviorList.ALIVE_AREA1:
@@ -279,7 +298,7 @@ class Behavior:
 
             #print(self.posture)
             #機体が横向きになったら次の状態へ
-            if self.posture > pi/2:
+            if (self.posture > pi/2 and self.field == Field.BLUE) or (self.posture < -pi/2 and self.field == Field.RED) :
                 self.change_state(BehaviorList.ALIVE_AREA2_WATER_WALL)
 
             self.can_messages.append(self.base_action.move(v))
@@ -290,9 +309,9 @@ class Behavior:
             if self.field == Field.BLUE:
                 self.can_messages.append(self.move_along_wall(Direction.RIGHT, approach_speed=250))
             elif self.field == Field.RED:
-                self.can_messages.append(self.move_along_wall(Direction.LEFT))
+                self.can_messages.append(self.move_along_wall(Direction.LEFT, approach_speed=250))
 
-            if self.wall_sensor_state['Right front'] and self.wall_sensor_state['Right rear'] == True:
+            if (self.wall_sensor_state['Right front'] and self.wall_sensor_state['Right rear'] == True and self.field == Field.BLUE) or (self.wall_sensor_state['Left front'] and self.wall_sensor_state['Left rear'] == True and self.field == Field.RED):
                 time.sleep(0.5)
                 self.change_state(BehaviorList.ALIVE_AREA2_ON_WATER_WALL)
 
@@ -303,7 +322,7 @@ class Behavior:
             elif self.field == Field.RED:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT))
 
-            if (not self.wall_sensor_state['Right front']) and (not self.wall_sensor_state['Right rear']):
+            if (not self.wall_sensor_state['Right front'] and not self.wall_sensor_state['Right rear'] == True and self.field == Field.BLUE) or (not self.wall_sensor_state['Left front'] and not self.wall_sensor_state['Left rear'] == True and self.field == Field.RED):
                 self.change_state(BehaviorList.ALIVE_APPROACH_SLOPE23_ROTATE)
 
         elif self.state == BehaviorList.ALIVE_APPROACH_SLOPE23_ROTATE:
@@ -324,14 +343,14 @@ class Behavior:
 
         #スロープに近づく
         elif self.state == BehaviorList.ALIVE_APPROACH_SLOPE23:
-            self.can_messages.append(self.base_action.move([0, 600, 0]))
+            self.can_messages.append(self.base_action.move([0, 600, -0.5 * self.posture]))
 
             # 坂検出
             if self.is_on_slope:
                 self.change_state(BehaviorList.ALIVE_SLOPE23)
         
         elif self.state == BehaviorList.ALIVE_SLOPE23:
-            self.can_messages.append(self.base_action.move([0, 600, 0]))
+            self.can_messages.append(self.base_action.move([0, 600, -0.5 * self.posture]))
 
             #スロープ検出した後，平面検出するまで進む
             if not self.is_on_slope:
@@ -339,8 +358,9 @@ class Behavior:
         
         #半径2000の円を描きながら適当に真ん中あたりに行く
         elif self.state == BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT:
-            radius = 2400
-            self.max_speed = 1200
+            self.base_action.arm.up()
+            radius = 2000
+            self.max_speed = 1500
             sign = -1
             if self.field == Field.BLUE:
                 sign = -1
@@ -351,17 +371,17 @@ class Behavior:
 
             num, x, y, z, is_obtainable = self.ball_camera
 
-            # if num > 0:
-            #     self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
+            if num > 0:
+                self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
             
             # elif self.line_camera[0] and self.posture < -11 / 24 * pi:
             #     self.change_state(BehaviorList.ALIVE_AREA3_FOLLOW_STRAGE_CENTERLINE)
 
-            if self.posture < -pi * 0.42:
-                self.base_action.move([x * 1.2 - 200, 600, (-pi/2 - self.posture) * 0.3])
-                time.sleep(4)
-                self.ball_camera = (0, 0, 0, 0, 0, False)
-                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
+            if (self.posture < -pi * 0.42 and self.field == Field.BLUE) or (self.posture > pi * 0.42 and self.field == Field.RED):
+                # self.base_action.move([x * 1.2 - 200, 600, (-pi/2 - self.posture) * 0.3])
+                # time.sleep(4)
+                # self.ball_camera = (0, 0, 0, 0, 0, False)
+                self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CW)
 
         # ストレージエリアのライン追従
         elif self.state == BehaviorList.ALIVE_AREA3_FOLLOW_STRAGE_CENTERLINE:
@@ -374,7 +394,14 @@ class Behavior:
         
         # ボール探し
         elif self.state == BehaviorList.ALIVE_BALL_SEARCH_CCW:
-            self.base_action.move([0, 0, 0.8])
+            sign = 1
+            if self.field == Field.BLUE:
+                sign = 1
+
+            if self.field == Field.RED:
+                sign = -1
+            
+            self.base_action.move([-sign*200, 0, sign*0.8])
             num, x, y, z, is_obtainable = self.ball_camera
 
             if num > 0:
@@ -383,9 +410,10 @@ class Behavior:
                 self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CW)
 
         elif self.state == BehaviorList.ALIVE_BALL_SEARCH_CW:
-            self.base_action.move([0, 0, -0.8])
+            self.base_action.move([self.field.value * 200, 0, -self.field.value*0.8])
             num, x, y, z, is_obtainable = self.ball_camera
 
+            sign = self.field.value
             if num > 0:
                 self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG_CW)
             elif self.posture > pi * 0.8 or self.posture < -pi * 0.8:
@@ -395,8 +423,8 @@ class Behavior:
         elif self.state == BehaviorList.ALIVE_BALL_OBTAINIG:
             num, x, y, z, is_obtainable = self.ball_camera
             if num > 0:
-                pos = x - self.center_obtainable_area[0], y - self.center_obtainable_area[1], 0
-                self.follow_object(pos, gain=(0.5, 0.6, 0))
+                pos = x - self.center_obtainable_area[0], y - self.center_obtainable_area[1], -self.field.value * pi/2 - self.posture
+                self.follow_object(pos, gain=(0.8, 1, 0.3))
             
             elif num == 0:
                 self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
@@ -412,8 +440,8 @@ class Behavior:
         elif self.state == BehaviorList.ALIVE_BALL_OBTAINIG_CW:
             num, x, y, z, is_obtainable = self.ball_camera
             if num > 0:
-                pos = x - self.center_obtainable_area[0], y - self.center_obtainable_area[1], 0
-                self.follow_object(pos, gain=(0.5, 0.6, 0))
+                pos = x - self.center_obtainable_area[0], y - self.center_obtainable_area[1], -self.field.value * pi/2 - self.posture
+                self.follow_object(pos, gain=(1.4, 1.8, 0.8))
             
             elif num == 0:
                 self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CW)
@@ -437,43 +465,32 @@ class Behavior:
         # サイロエリアに向かう
         elif self.state == BehaviorList.ALIVE_MOVE_TO_SILO:
             # 90度の方を向いたら
-            if (self.posture > pi * 0.35 and self.posture<pi*0.65):
-                if self.stored_balls > 3 and self.stored_balls < 8:
-                    vx = -250
-
-                else:
-                    vx = 0
-
-                for i in range(2):
-                    self.base_action.move([vx, 1000, 0])
-                    time.sleep(0.4)
-                self.base_action.move([0, 850, 0])
-                time.sleep(0.4)
-                self.base_action.move([0, 700, 0])
-                time.sleep(0.4)                
+            if (self.field.RED and (self.posture < -pi * 0.35 and self.posture > -pi*0.65)):
                 self.base_action.fan.hold()
                 self.change_state(BehaviorList.ALIVE_FIND_SILOLINE)
 
-            gain = 0.4
-            v = [0, 0, (pi/2 - self.posture) * gain]
-            self.base_action.move(v)
+            gain = 3
+            v = [-self.field.value * 500, 0, (self.field.value * pi/2 - self.posture) * gain]
+            self.base_action.move(v, is_field=True)
                 
         # ラインを見つける
         elif self.state == BehaviorList.ALIVE_FIND_SILOLINE:
             self.base_action.fan.hold()
-            vertical, right, left, error, angle_error = self.line_camera
-            rad = pi / 2 - self.posture
+            # vertical, right, left, error, angle_error = self.line_camera
+            rad = self.field.value * pi / 2 - self.posture
 
-            if self.wall_sensor_state['Front right'] or self.wall_sensor_state['Front left']:
-                for i in range(8):
-                    self.base_action.move([0, 0, pi/2])
-                    time.sleep(0.5)
+            #if self.wall_sensor_state['Front right'] or self.wall_sensor_state['Front left']:
+            #    for i in range(8):
+            #        self.base_action.move([0, 0, pi/2])
+            #        time.sleep(0.5)
          
-            if vertical:
-                self.change_state(BehaviorList.ALIVE_FOLLOW_SILOLINE)
-            else:
-                # ラインが無いときは前進
-                self.base_action.move([0, self.max_speed/2, rad * 0.2])
+            
+            # self.base_action.move([0, self.max_speed/2, rad * 0.2])
+            x, y = self.silo_camera[0].get_position()
+            self.follow_object([x+150, 500, rad*0.2])
+            if self.wall_sensor_state['Front right'] or self.wall_sensor_state['Front left']:
+                self.change_state(BehaviorList.ALIVE_PUTIN)
+            
         
         elif self.state == BehaviorList.ALIVE_FOLLOW_SILOLINE:
             # self.base_action.fan.on()
@@ -515,7 +532,7 @@ class Behavior:
             self.base_action.fan.off()
             time.sleep(0.5)
             v = [0, -1200, 0]
-            for i in range(8):
+            for i in range(5):
                 self.base_action.move(v)
                 time.sleep(0.2)
             self.change_state(BehaviorList.ALIVE_MOVE_TO_STORAGE)
@@ -524,11 +541,12 @@ class Behavior:
             if self.is_on_slope:
                 self.change_state(BehaviorList.ALIVE_ARRIVE_AT_STORAGE)
             else :
-                self.base_action.move([0, -800, 0])
+                self.base_action.move([self.field.value * 600, 0, 0.5*(-self.field.value*pi/2 - self.posture)], is_field=True)
+
         elif self.state == BehaviorList.ALIVE_ARRIVE_AT_STORAGE:
             num, x, y, z, is_obtainable = self.ball_camera
             self.base_action.move([0, 0, -1])
-            if self.posture < 0 and self.posture > -pi / 2:
+            if (self.posture < 0 and self.posture > -pi / 2 and self.field == Field.BLUE) or (self.posture > 0 and self.posture < pi / 2 and self.field == Field.RED):
                 self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
                 
             
