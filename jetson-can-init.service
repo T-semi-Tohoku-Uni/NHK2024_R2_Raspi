@@ -1,0 +1,12 @@
+[Unit]
+Description=Run CAN setup script
+After=multi-user.target
+
+[Service]
+ExecStart=/home/tsemi/NHK2024/NHK2024_R2_Raspi/jetson_can_init_script.sh 
+Type=oneshot
+RemainAfterExit=yes
+User=root
+
+[Install]
+WantedBy=multi-user.target
