@@ -76,6 +76,30 @@ pip freeze > requirements.txt
 tail -f log_main.log
 ```
 
+# CANの起動時設定
+`systemctl`を使って起動時設定を行う. 実行権限を編集
+```
+chmod 777 jetson_can_init_script.sh
+chmod 777 jetson-can-init.service
+```
+`/etc/systemd/system/`へ`.service`ファイルをコピー
+```
+sudo cp jetson-can-init.service /etc/systemd/system/
+```
+起動してみてエラーが出ないことを確認　
+```
+sudo systemctl start jetson-can-init.service 
+```
+もし, canをactiveにしている場合は`busy`になるのでいい感じに解消する
+```
+sudo ip link set can0 down
+```
+
+最後に起動時の実行をONにする
+```
+sudo systemctl enable jetson-can-init.service
+```
+
 ## プログラムの自動起動
 ラズパイの電源が入った時に, 自動でプログラムを起動する. 
 まずは`/etc/systemd/system`で`sudo vim nhk2024.service`を実行して, ファイルを作成し, 以下の内容を記述する
