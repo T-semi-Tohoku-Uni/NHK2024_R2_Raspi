@@ -78,7 +78,7 @@ class R2Controller(MainController):
         super().__init__("tsemiR2", 11111, is_udp=False)
         self.behavior = Behavior(Field.RED, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
                                  start_state=BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT,
-                                 finish_state=BehaviorList.ALIVE_PUTIN_WAIT
+                                #  finish_state=BehaviorList.ALIVE_PUTIN_WAIT
                                  )
         
         # init can message lister
@@ -140,6 +140,10 @@ class R2Controller(MainController):
                 self.sensor_states[Sensors.SILO_CAMERA] = self.mainprocess.update_silo_camera_out()
                 # print(self.sensor_states[Sensors.BALL_CAMERA])
                 # print(self.sensor_states[Sensors.SILO_CAMERA])
+                # silos = self.sensor_states[Sensors.SILO_CAMERA]
+                # print('loop')
+                # for i, silo in enumerate(silos):
+                #     print(f'silo:{i}: {silo.pos}')
                 frame, id = self.mainprocess.q_out.get() 
                 # # 画面表示用
                 # cv2.imshow(f'{id}', frame)
