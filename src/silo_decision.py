@@ -12,9 +12,8 @@ class ScoreingSilos:
         self.is_silo_full = False
         self.silos = silos
     def get_score(self, silo:Silo) -> None:
-        self.my_ball_num = silo.get_my_team_ball_cnt()
-        self.opponent_ball_num = silo.get_opponent_team_cnt()
-        self.pos = silo.get_position()
+        my_ball_num = silo.get_my_team_ball_cnt()
+        opponent_ball_num = silo.get_opponent_team_cnt()
         # 距離 x[cm]*-1点
         # 計3個　-1000点
         # 相手2　3000点
@@ -24,27 +23,29 @@ class ScoreingSilos:
         # 自分1　1000
         # 0個　2000
         self.is_silo_full = False
+        score = 0
         
-        if (self.my_ball_num + self.opponent_ball_num) == 0:
-            self.score = 3000
-        elif self.my_ball_num == 1 and self.opponent_ball_num == 0:
-            self.score = 2000
-        elif self.my_ball_num == 0 and self.opponent_ball_num == 1:
-            self.score = 1000
-        elif self.my_ball_num == 2 and self.opponent_ball_num == 0:
-            self.score = 5000
-        elif self.my_ball_num == 1 and self.opponent_ball_num == 1:
-            self.score = 6000
-        elif self.my_ball_num == 0 and self.opponent_ball_num == 2:
-            self.score = 4000
-        elif (self.my_ball_num + self.opponent_ball_num) == 3:
-            self.score = 0
-            self.is_silo_full = True
+        if (my_ball_num + opponent_ball_num) == 0:
+            score = 3000
+        elif my_ball_num == 1 and opponent_ball_num == 0:
+            score = 2000
+        elif my_ball_num == 0 and opponent_ball_num == 1:
+            score = 1000
+        elif my_ball_num == 2 and opponent_ball_num == 0:
+            score = 5000
+        elif my_ball_num == 1 and opponent_ball_num == 1:
+            score = 6000
+        elif my_ball_num == 0 and opponent_ball_num == 2:
+            score = 4000
+        elif (my_ball_num + opponent_ball_num) == 3:
+            score = 0
+        else:
+            print('error')
         
         # 距離によるスコアの加算
-        self.score -= sqrt(self.pos[0]*self.pos[0] + self.pos[1]*self.pos[1])/10
+        score -= sqrt(silo.pos[0]*silo.pos[0] + silo.pos[1]*silo.pos[1])/10
 
-        return self.score
+        return score
     
     def get_silo_full(self) -> bool:
         return self.is_silo_full
