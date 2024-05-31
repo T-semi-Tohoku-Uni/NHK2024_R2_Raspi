@@ -76,7 +76,7 @@ class CANMessageLister(can.Listener):
 class R2Controller(MainController):
     def __init__(self):
         super().__init__("tsemiR2", 11111, is_udp=False)
-        self.behavior = Behavior(Field.RED, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
+        self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
                                  start_state=BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT,
                                 #  finish_state=BehaviorList.ALIVE_PUTIN_WAIT
                                  )
@@ -126,15 +126,6 @@ class R2Controller(MainController):
         
         try:
             while True:
-                # Area3に行くまで画像処理をオフにする
-                # state = self.behavior.get_state()
-                # if state.value >= BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT.value:
-                #     if not self.is_running:
-                #         # マルチスレッドの実行
-                #         self.mainprocess.thread_start()
-                #         self.is_running = True
-                #     self.sensor_states[Sensors.BALL_CAMERA] = self.mainprocess.update_ball_camera_out()
-                #     self.sensor_states[Sensors.LINE_CAMERA] = self.mainprocess.update_line_camera_out()
                 self.sensor_states[Sensors.BALL_CAMERA] = self.mainprocess.update_ball_camera_out()
                 self.sensor_states[Sensors.LINE_CAMERA] = self.mainprocess.update_line_camera_out()
                 self.sensor_states[Sensors.SILO_CAMERA] = self.mainprocess.update_silo_camera_out()
@@ -145,18 +136,27 @@ class R2Controller(MainController):
                 # for i, silo in enumerate(silos):
                 #     print(f'silo:{i}: {silo.pos}')
                 frame, id = self.mainprocess.q_out.get() 
+
                 # # 画面表示用
                 # cv2.imshow(f'{id}', frame)
                 # key = cv2.waitKey(1)
                 # if key == ord("q"):
                 #     break
                 # # ここまで
+
+                # print(f'up:{self.behavior.is_heading_up(0.1)}')
+                # print(f'down:{self.behavior.is_heading_down(0.1)}')
+                # print(f'in:{self.behavior.is_heading_in(0.1)}')
+                # print(f'out:{self.behavior.is_heading_out(0.1)}')
+                print(f'posture:{self.behavior.posture}')
+
                 
                 # print(f"hello {self.mainprocess.update_ball_camera_out()}")
                 self.parse_from_can_message()
                 self.lister.clear_received_data()
                 self.behavior.update_sensor_state(self.sensor_states)
                 self.behavior.action()
+
                 time.sleep(0.01)
                 continue
 
