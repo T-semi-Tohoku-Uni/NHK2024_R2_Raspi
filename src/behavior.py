@@ -557,7 +557,7 @@ class Behavior:
             vx = 1500
             if self.stored_balls > 6:
                 vx = 600
-            v = [-self.field.value * 600, 0, (self.field.value * pi/2 - self.posture) * gain]
+            v = [-self.field.value * vx, 0, (self.field.value * pi/2 - self.posture) * gain]
             self.base_action.move(v, is_field=True)
                 
         # サイロを見つける
