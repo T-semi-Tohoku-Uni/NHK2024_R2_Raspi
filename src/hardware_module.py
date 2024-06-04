@@ -74,11 +74,16 @@ class Arm(HWBaseModule):
     class ArmState(Enum):
         UP = 0
         DOWN = 1
+        INIT = 2
 
     def __init__(self):
         super().__init__(CANList.ARM.value, None, CANList.EMERGENCY.value)
 
         self.state = None
+
+    def init(self):
+        self.state = self.ArmState.INIT
+        self.write_can_bus(self.can_id, bytearray([self.ArmState.INIT.value]))
 
     def up(self):
         self.state = self.ArmState.UP

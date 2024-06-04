@@ -12,6 +12,8 @@ from behavior import Direction, Field, Behavior, BehaviorList
 from hardware_module import CANList,Sensors
     
 
+field = Field.BLUE
+
 class ClientData:
     def __init__(self, data: Dict):
         try:
@@ -76,8 +78,8 @@ class CANMessageLister(can.Listener):
 class R2Controller(MainController):
     def __init__(self):
         super().__init__("tsemiR2", 11111, is_udp=False)
-        self.behavior = Behavior(Field.BLUE, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
-                                 start_state=BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT,
+        self.behavior = Behavior(field, (OBTAINABE_AREA_CENTER_X, OBTAINABE_AREA_CENTER_Y), 
+                                #  start_state=BehaviorList.ALIVE_AREA3_FIRST_ATTEMPT,
                                 #  finish_state=BehaviorList.ALIVE_PUTIN_WAIT
                                  )
         
@@ -103,15 +105,11 @@ class R2Controller(MainController):
                 Sensors.UI_BUTTONS: 0
             }
         
-        
-        red_model_path = '/home/tsemi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/NHK2024_red_ball_model/red_ball_model.pt'
-        silo_model_path = '/home/tsemi/NHK2024/NHK2024_R2_Raspi/src/NHK2024_Camera_Library/models/NHK2024_silo_model/silo_model.pt'
-        
         # メインプロセスを実行するクラス
         print("create main instance")
         self.mainprocess = MainProcess(
-            ball_model_path=red_model_path, 
-            silo_model_path=silo_model_path,
+            field=field,
+            save_image_dir=self.log_system.get_log_dir(),
             show=True
         )
         

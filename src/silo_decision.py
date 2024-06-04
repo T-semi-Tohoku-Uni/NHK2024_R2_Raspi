@@ -43,7 +43,7 @@ class ScoreingSilos:
             print('error')
         
         # 距離によるスコアの加算
-        score -= sqrt(silo.pos[0]*silo.pos[0] + silo.pos[1]*silo.pos[1])/10
+        score -= sqrt(silo.pos[0]*silo.pos[0] + silo.pos[1]*silo.pos[1])/100
 
         return score
     
