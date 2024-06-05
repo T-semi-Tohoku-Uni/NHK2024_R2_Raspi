@@ -75,7 +75,8 @@ class BehaviorList(Enum):
     ALIVE_BALL_OBTAINIG = 120
     ALIVE_BALL_OBTAINIG_CW = 122
     ALIVE_BALL_PICKUP_WAITING = 121
-    ALIVE_FIND_SILO = 130
+    ALIVE_FIND_SILO_CW = 130
+    ALIVE_FIND_SILO_CCW = 131
     ALIVE_ANOTHER_SILO_CW = 132
     ALIVE_ANOTHER_SILO_CCW = 134
     ALIVE_CHECK_SILO = 140
@@ -181,7 +182,7 @@ class Behavior:
             print("Invalid direction")
             return False
         
-        virtual_thrust_speed = 80
+        virtual_thrust_speed = 100
         align_angle_speed = 0.3
 
         if direction == Direction.RIGHT:
@@ -303,10 +304,13 @@ class Behavior:
                 return
             if self.ui_buttons == 1:
                 self.change_state(self.start_state)
+                time.sleep(0.1)
             if self.ui_buttons == 2:
                 self.change_state(BehaviorList.ALIVE_AREA1)
+                time.sleep(0.1)
             if self.ui_buttons == 3:
                 self.change_state(BehaviorList.RETRY_AREA2)
+                time.sleep(0.1)
 
         #エリア１の壁に沿って進む
         elif self.state == BehaviorList.ALIVE_AREA1:
@@ -353,14 +357,14 @@ class Behavior:
             elif self.field == Field.RED:
                 self.can_messages.append(self.move_along_wall(Direction.LEFT, approach_speed=250))
 
-            if ((self.wall_sensor_state['Right front'] or self.wall_sensor_state['Right rear']) and self.field == Field.BLUE) or ((self.wall_sensor_state['Left front'] or self.wall_sensor_state['Left rear'] == True) and self.field == Field.RED):
+            if ((self.wall_sensor_state['Right front'] and self.wall_sensor_state['Right rear']) and self.field == Field.BLUE) or ((self.wall_sensor_state['Left front'] and self.wall_sensor_state['Left rear'] == True) and self.field == Field.RED):
                 time.sleep(0.6)
                 self.change_state(BehaviorList.ALIVE_AREA2_ON_WATER_WALL)
             
         elif self.state == BehaviorList.RETRY_AREA2:
-            vx = self.field.value * 600
-            self.base_action.move([vx, 700, 0])
-            if ((self.wall_sensor_state['Right front'] or self.wall_sensor_state['Right rear']) and self.field == Field.BLUE) or ((self.wall_sensor_state['Left front'] or self.wall_sensor_state['Left rear'] == True) and self.field == Field.RED):
+            vx = self.field.value * 400
+            self.base_action.move([vx, 500, 0])
+            if ((self.wall_sensor_state['Right front'] and self.wall_sensor_state['Right rear']) and self.field == Field.BLUE) or ((self.wall_sensor_state['Left front'] and self.wall_sensor_state['Left rear'] == True) and self.field == Field.RED):
                 time.sleep(0.6)
                 self.change_state(BehaviorList.ALIVE_AREA2_ON_WATER_WALL)
 
@@ -386,7 +390,7 @@ class Behavior:
             v = [0, self.max_speed, sign * self.max_speed / radius]
 
             #機体が横向きになったら次の状態へ
-            if self.is_heading_up(0.1):
+            if self.is_heading_up(0.1 * pi):
                 self.base_action.cam_arm.up()
                 self.change_state(BehaviorList.ALIVE_APPROACH_SLOPE23)
 
@@ -394,7 +398,7 @@ class Behavior:
 
         #スロープに近づく
         elif self.state == BehaviorList.ALIVE_APPROACH_SLOPE23:
-            self.base_action.move([0, 1000, -self.posture])
+            self.base_action.move([0, 500, -self.posture])
 
             # 坂検出
             if self.is_on_slope:
@@ -402,7 +406,7 @@ class Behavior:
                 self.change_state(BehaviorList.ALIVE_SLOPE23)
         
         elif self.state == BehaviorList.ALIVE_SLOPE23:
-            self.can_messages.append(self.base_action.move([0, 1500, -self.posture]))
+            self.can_messages.append(self.base_action.move([0, 500, -self.posture]))
 
             #スロープ検出した後，平面検出するまで進む
             if not self.is_on_slope:
@@ -426,7 +430,7 @@ class Behavior:
 
             num, x, y, z, is_obtainable = self.ball_camera
 
-            if num > 0:
+            if num > 0 and self.is_heading_out(1):
                 self.change_state(BehaviorList.ALIVE_BALL_OBTAINIG)
             
             # elif self.line_camera[0] and self.posture < -11 / 24 * pi:
@@ -494,7 +498,7 @@ class Behavior:
                 elif self.wall_sensor_state['Left front'] or self.wall_sensor_state['Left rear']:
                     target = -pi/8
                 pos = x - self.center_obtainable_area[0], y - self.center_obtainable_area[1], -self.field.value * pi/2 + target - self.posture
-                self.follow_object(pos, gain=(1.4, 1.8, 0))
+                self.follow_object(pos, gain=(1.4, 1.4, 0))
             
             elif num == 0:
                 self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CCW)
@@ -518,7 +522,7 @@ class Behavior:
             num, x, y, z, is_obtainable = self.ball_camera
             if num > 0:
                 pos = x - self.center_obtainable_area[0], y - self.center_obtainable_area[1], -self.field.value * pi/2 - self.posture
-                self.follow_object(pos, gain=(1.4, 1.8, 0))
+                self.follow_object(pos, gain=(1.4, 1.4, 0))
             
             elif num == 0:
                 self.change_state(BehaviorList.ALIVE_BALL_SEARCH_CW)
@@ -551,7 +555,7 @@ class Behavior:
             # 90度の方を向いたら
             if self.is_heading_in(pi * 0.2):
                 self.base_action.fan.on()
-                self.change_state(BehaviorList.ALIVE_FIND_SILO)
+                self.change_state(BehaviorList.ALIVE_FIND_SILO_CW)
 
             gain = 8
             vx = 1500
@@ -561,28 +565,13 @@ class Behavior:
             self.base_action.move(v, is_field=True)
                 
         # サイロを見つける
-        elif self.state == BehaviorList.ALIVE_FIND_SILO:
+        elif self.state == BehaviorList.ALIVE_FIND_SILO_CW:
             self.base_action.fan.on()
             rad = self.field.value * pi / 2 - self.posture
             
-            if self.silo_camera:
-                scoreing_silos = ScoreingSilos(self.silo_camera)
-                sorted_silos = scoreing_silos.sort_by_score()
-                x, y, _ = sorted_silos[0].pos
-                # print(x, y, _)
-                self.follow_object([x, y-150, rad], (1, 0.8, 1))
-                if (sorted_silos[0].get_my_team_ball_cnt() + sorted_silos[0].get_opponent_team_cnt())>=3:
-                    x_sum = 0
-                    # new silo are might be in the direction where sum of all x coordinate
-                    for silo in sorted_silos:
-                        x, y, _ = silo.pos
-                        x_sum += x
-                    
-                    if x_sum >= 0:
-                        self.change_state(BehaviorList.ALIVE_ANOTHER_SILO_CCW)
-
-                    if x_sum < 0:
-                        self.change_state(BehaviorList.ALIVE_ANOTHER_SILO_CW)
+            if not self.silo_camera is None:
+                x, y, _ = self.silo_camera
+                self.follow_object([x, y - 150, rad], (1, 0.8, 0.4))
                 
                 if y < 1500:
                     self.change_state(BehaviorList.ALIVE_CHECK_SILO)
@@ -590,22 +579,26 @@ class Behavior:
             else:
                 self.change_state(BehaviorList.ALIVE_ANOTHER_SILO_CW)
 
+        elif self.state == BehaviorList.ALIVE_FIND_SILO_CCW:
+            self.base_action.fan.on()
+            rad = self.field.value * pi / 2 - self.posture
+            
+            if not self.silo_camera is None:
+                x, y, _ = self.silo_camera
+                self.follow_object([x, y - 150, rad], (1, 0.8, 0.4))
+                
+                if y < 1500:
+                    self.change_state(BehaviorList.ALIVE_CHECK_SILO)
+
+            else:
+                self.change_state(BehaviorList.ALIVE_ANOTHER_SILO_CCW)
+
         elif self.state == BehaviorList.ALIVE_ANOTHER_SILO_CCW:
             self.base_action.fan.on()
-            scoreing_silos = ScoreingSilos(self.silo_camera)
-            sorted_silos = scoreing_silos.sort_by_score()
-            vx = 0
+            vx = self.field.value * 200
 
-            if sorted_silos:
-                __, y, _ = sorted_silos[0].pos
-                if (sorted_silos[0].get_my_team_ball_cnt() + sorted_silos[0].get_opponent_team_cnt()) < 3:
-                    self.change_state(BehaviorList.ALIVE_FIND_SILO)
-                    if y < 1500:
-                        vx = self.field.value * 600
-                    pass
-
-                elif self.is_heading_down(1):
-                    self.change_state(BehaviorList.ALIVE_ANOTHER_SILO_CW)
+            if not self.silo_camera is None:
+                self.change_state(BehaviorList.ALIVE_FIND_SILO_CCW)
                     
             elif  self.is_heading_down(1):
                     self.change_state(BehaviorList.ALIVE_ANOTHER_SILO_CW)
@@ -614,19 +607,10 @@ class Behavior:
 
         elif self.state == BehaviorList.ALIVE_ANOTHER_SILO_CW:
             self.base_action.fan.on()
+            vx = self.field.value * 200
 
-            scoreing_silos = ScoreingSilos(self.silo_camera)
-            sorted_silos = scoreing_silos.sort_by_score()
-            vx = 0
-            if sorted_silos:
-                __, y, _ = sorted_silos[0].pos
-                if (sorted_silos[0].get_my_team_ball_cnt() + sorted_silos[0].get_opponent_team_cnt()) < 3:
-                    self.change_state(BehaviorList.ALIVE_FIND_SILO)
-                    vx = self.field.value * 600
-                    pass
-
-                elif self.is_heading_up(1):
-                    self.change_state(BehaviorList.ALIVE_ANOTHER_SILO_CCW)
+            if not self.silo_camera is None:
+                self.change_state(BehaviorList.ALIVE_FIND_SILO_CW)
             elif self.is_heading_up(1):
                     self.change_state(BehaviorList.ALIVE_ANOTHER_SILO_CCW)
 
@@ -640,19 +624,16 @@ class Behavior:
                 # self.change_state(BehaviorList.ALIVE_ALIGN_SILOZONE)
                 self.change_state(BehaviorList.ALIVE_PUTIN)
 
-            elif self.silo_camera:
-                scoreing_silos = ScoreingSilos(self.silo_camera)
-                sorted_silos = scoreing_silos.sort_by_score()
-                if (sorted_silos[0].get_my_team_ball_cnt() + sorted_silos[0].get_opponent_team_cnt())>=3:
-                    self.base_action.move([self.field.value*800, 0, 0], is_field=True)
-                    time.sleep(1)
-                    self.change_state(BehaviorList.ALIVE_FIND_SILO)
+            elif self.silo_camera is None:
+                self.change_state(BehaviorList.ALIVE_FIND_SILO_CW)
+            
+            elif not self.silo_camera is None:
 
-                x, y, _ = sorted_silos[0].pos
+                x, y, _ = self.silo_camera
                 # print(x, y, _)
                 if y > 1700:
                     self.base_action.fan.on()
-                    self.change_state(BehaviorList.ALIVE_FIND_SILO)
+                    self.change_state(BehaviorList.ALIVE_FIND_SILO_CW)
                 if abs(x) < 100 and self.is_heading_in(0.2):
                     y = y-250
                     self.base_action.fan.hold()
@@ -663,7 +644,7 @@ class Behavior:
             
             else:
                 # self.base_action.move([self.field.value*300, 0, rad])
-                self.change_state(BehaviorList.ALIVE_FIND_SILO)
+                self.change_state(BehaviorList.ALIVE_FIND_SILO_CW)
 
         elif self.state == BehaviorList.ALIVE_ALIGN_SILOZONE:
             self.base_action.fan.hold()
@@ -675,10 +656,25 @@ class Behavior:
         elif self.state == BehaviorList.ALIVE_PUTIN:
             self.base_action.fan.off()
             time.sleep(0.1)
+            if not (self.wall_sensor_state['Front right'] and self.wall_sensor_state['Front left']):
+                self.base_action.move([0, 100, 0])
+                self.base_action.fan.hold()
+                self.change_state(BehaviorList.ALIVE_CHECK_SILO)
+                return
             self.base_action.move([0, 100, 0])
             time.sleep(0.1)
+            if not (self.wall_sensor_state['Front right'] and self.wall_sensor_state['Front left']):
+                self.base_action.move([0, 100, 0])
+                self.base_action.fan.hold()
+                self.change_state(BehaviorList.ALIVE_CHECK_SILO)
+                return
             self.base_action.fan.off()
             time.sleep(0.1)
+            if not (self.wall_sensor_state['Front right'] and self.wall_sensor_state['Front left']):
+                self.base_action.move([0, 100, 0])
+                self.base_action.fan.hold()
+                self.change_state(BehaviorList.ALIVE_CHECK_SILO)
+                return
             self.stored_balls = self.stored_balls + 1
             self.change_state(BehaviorList.ALIVE_PUTIN_WAIT)
             if self.stored_balls > 15:
@@ -688,6 +684,11 @@ class Behavior:
             
             self.base_action.fan.off()
             time.sleep(0.1)
+            if not (self.wall_sensor_state['Front right'] and self.wall_sensor_state['Front left']):
+                self.base_action.move([0, 100, 0])
+                self.base_action.fan.hold()
+                self.change_state(BehaviorList.ALIVE_CHECK_SILO)
+                return
             self.base_action.move([0, 100, 0])
             time.sleep(0.3)
             v = [0, -1500, 0]

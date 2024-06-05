@@ -146,7 +146,7 @@ class R2Controller(MainController):
                 # print(f'down:{self.behavior.is_heading_down(0.1)}')
                 # print(f'in:{self.behavior.is_heading_in(0.1)}')
                 # print(f'out:{self.behavior.is_heading_out(0.1)}')
-                print(f'posture:{self.behavior.posture}')
+                # print(f'posture:{self.behavior.posture}')
 
                 
                 # print(f"hello {self.mainprocess.update_ball_camera_out()}")

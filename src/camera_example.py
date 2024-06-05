@@ -5,6 +5,7 @@ import cv2
 if __name__ == "__main__":
     mainprocess = MainProcess(
         field=Field.BLUE,
+        save_image_dir="cameratest",
         show=True
     )
     mainprocess.thread_start()
@@ -18,7 +19,7 @@ if __name__ == "__main__":
             if key == ord("q"):
                 break
             items,x,y,z,is_obtainable = mainprocess.update_ball_camera_out()
-            print(f"\n{items=}, {x=}, {y=}, {z=}, {is_obtainable=}")
+            # print(f"\n{items=}, {x=}, {y=}, {z=}, {is_obtainable=}")
             # _, _= mainprocess.q_out.get()
             continue
             
